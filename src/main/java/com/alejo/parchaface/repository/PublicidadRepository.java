@@ -5,5 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface PublicidadRepository extends JpaRepository<Publicidad, Integer> {
-    List<Publicidad> findByIdEvento(int idEvento);
+
+    List<Publicidad> findByEvento_Id_evento(Integer idEvento);
+
 }
+
+
+
+
