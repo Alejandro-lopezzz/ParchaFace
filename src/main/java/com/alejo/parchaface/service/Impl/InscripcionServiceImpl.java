@@ -33,8 +33,12 @@ public class InscripcionServiceImpl implements InscripcionService {
     }
 
     @Override
-    public Inscripcion updateInscripcion(Integer id, Inscripcion inscripcion) {
-        Optional<Inscripcion> optional = inscripcionRepository.findById(id);
+    public Inscripcion updateInscripcion(Inscripcion inscripcion) {
+        if (inscripcion.getId_inscripcion() == null) {
+            return null; // o lanzar excepción, porque no hay id para actualizar
+        }
+
+        Optional<Inscripcion> optional = inscripcionRepository.findById(inscripcion.getId_inscripcion());
         if (optional.isPresent()) {
             Inscripcion existente = optional.get();
             // Actualizamos los campos
@@ -44,8 +48,10 @@ public class InscripcionServiceImpl implements InscripcionService {
             existente.setEstado_inscripcion(inscripcion.getEstado_inscripcion());
             return inscripcionRepository.save(existente);
         }
-        return null; // o lanzar una excepción si no existe
+        return null; // o lanzar excepción si no existe
     }
+
+
 
     @Override
     public void deleteInscripcion(Integer id) {

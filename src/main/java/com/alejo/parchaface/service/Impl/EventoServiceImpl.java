@@ -1,9 +1,11 @@
 package com.alejo.parchaface.service.Impl;
 
 import com.alejo.parchaface.model.Evento;
+import com.alejo.parchaface.model.enums.EstadoEvento;
 import com.alejo.parchaface.repository.EventoRepository;
 import com.alejo.parchaface.service.EventoService;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -35,5 +37,10 @@ public class EventoServiceImpl implements EventoService {
     @Override
     public void deleteEvento(Integer id) {
         eventoRepository.deleteById(id);
+    }
+
+    @Override
+    public List<Evento> getEventosPorEstado(EstadoEvento estadoEvento) {
+        return eventoRepository.findByEstadoEvento(estadoEvento);
     }
 }

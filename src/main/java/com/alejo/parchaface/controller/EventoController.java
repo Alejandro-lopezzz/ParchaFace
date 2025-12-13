@@ -1,6 +1,7 @@
 package com.alejo.parchaface.controller;
 
 import com.alejo.parchaface.model.Evento;
+import com.alejo.parchaface.model.enums.EstadoEvento;
 import com.alejo.parchaface.service.EventoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,12 @@ public class EventoController {
     public Evento guardar(@RequestBody Evento evento) {
         return eventoService.saveEvento(evento);
     }
+
+    @GetMapping("/estado/{estado}")
+    public List<Evento> obtenerPorEstado(@PathVariable EstadoEvento estado) {
+        return eventoService.getEventosPorEstado(estado);
+    }
+
 
     @PutMapping("/{id}")
     public Evento actualizar(@PathVariable Integer id, @RequestBody Evento evento) {

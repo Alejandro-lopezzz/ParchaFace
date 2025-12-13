@@ -2,6 +2,8 @@ package com.alejo.parchaface.model;
 
 import com.alejo.parchaface.model.enums.EstadoEvento;
 import jakarta.persistence.*;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -20,7 +22,8 @@ public class Evento {
     private EstadoEvento estadoEvento;  // Usando enum
 
     @OneToMany(mappedBy = "evento", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Inscripcion> inscripciones;
+    private List<Inscripcion> inscripciones = new ArrayList<>();
+
 
     // Getters y setters
     public Integer getId_evento() { return id_evento; }

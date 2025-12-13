@@ -1,6 +1,7 @@
 package com.alejo.parchaface.service.Impl;
 
 import com.alejo.parchaface.model.Notificacion;
+import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.repository.NotificacionRepository;
 import com.alejo.parchaface.service.NotificacionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,10 @@ public class NotificacionServiceImpl implements NotificacionService {
     @Override
     public Notificacion actualizarNotificacion(Notificacion notificacion) {
         return notificacionRepository.save(notificacion);
+    }
+    @Override
+    public List<Notificacion> obtenerPorUsuario(Usuario usuario) {
+        return notificacionRepository.findByUsuario(usuario);
     }
 
     @Override

@@ -4,6 +4,9 @@ import com.alejo.parchaface.model.enums.Estado;
 import com.alejo.parchaface.model.enums.Rol;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "usuario")
 public class Usuario {
@@ -28,6 +31,10 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Estado estado = Estado.activo;
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Notificacion> notificaciones = new ArrayList<>();
+
 
     // Getters y Setters
     public Integer getId_usuario() {
@@ -77,4 +84,7 @@ public class Usuario {
     public void setEstado(Estado estado) {
         this.estado = estado;
     }
+
+    public List<Notificacion> getNotificaciones() { return notificaciones; }
+    public void setNotificaciones(List<Notificacion> notificaciones) { this.notificaciones = notificaciones; }
 }

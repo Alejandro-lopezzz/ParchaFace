@@ -1,5 +1,6 @@
 package com.alejo.parchaface.model;
 
+import com.alejo.parchaface.model.enums.EstadoInscripcion;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -13,18 +14,18 @@ public class Inscripcion {
 
     @ManyToOne
     @JoinColumn(name = "id_usuario", nullable = false)
-    private Usuario usuario;  // Cambié de id_usuario a usuario
+    private Usuario usuario;
 
     @ManyToOne
     @JoinColumn(name = "id_evento", nullable = false)
-    private Evento evento;    // Cambié de id_evento a evento
+    private Evento evento;
 
     @Column(nullable = false)
     private LocalDate fecha_inscripcion = LocalDate.now();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoInscripcion estado_inscripcion = EstadoInscripcion.VIGENTE;
+    private EstadoInscripcion estado_inscripcion = EstadoInscripcion.vigente;
 
     // Getters y setters
     public Integer getId_inscripcion() { return id_inscripcion; }
@@ -41,6 +42,4 @@ public class Inscripcion {
 
     public EstadoInscripcion getEstado_inscripcion() { return estado_inscripcion; }
     public void setEstado_inscripcion(EstadoInscripcion estado_inscripcion) { this.estado_inscripcion = estado_inscripcion; }
-
-    public enum EstadoInscripcion { VIGENTE, CANCELADA }
 }

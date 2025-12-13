@@ -11,7 +11,7 @@ public interface InscripcionService {
 
     Inscripcion createInscripcion(Inscripcion inscripcion);
 
-    Inscripcion updateInscripcion(Integer id, Inscripcion inscripcion);
+    Inscripcion updateInscripcion(Inscripcion inscripcion);
 
     void deleteInscripcion(Integer id);
 }
