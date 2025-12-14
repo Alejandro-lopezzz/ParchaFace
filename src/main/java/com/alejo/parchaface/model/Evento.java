@@ -12,7 +12,8 @@ public class Evento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id_evento;
+    @Column(name = "id_evento")
+    private Integer idEvento;
 
     @Column(nullable = false)
     private String nombre;
@@ -26,8 +27,8 @@ public class Evento {
 
 
     // Getters y setters
-    public Integer getId_evento() { return id_evento; }
-    public void setId_evento(Integer id_evento) { this.id_evento = id_evento; }
+    public Integer getIdEvento() {return idEvento;}
+    public void setIdEvento(Integer idEvento) {this.idEvento = idEvento;}
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }

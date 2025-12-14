@@ -9,25 +9,28 @@ public class Reporte {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id_reporte;
+    private Integer idReporte;
 
     @Column(length = 50)
     private String tipo;
 
     @Column(nullable = false)
-    private LocalDateTime fecha_generacion = LocalDateTime.now();
+    private LocalDateTime fechaGeneracion = LocalDateTime.now();
 
     @ManyToOne
     @JoinColumn(name = "id_admin")
-    private Usuario id_admin;
+    private Usuario admin;
 
     // Getters y setters
-    public Integer getId_reporte() { return id_reporte; }
-    public void setId_reporte(Integer id_reporte) { this.id_reporte = id_reporte; }
+    public Integer getIdReporte() { return idReporte; }
+    public void setIdReporte(Integer idReporte) { this.idReporte = idReporte; }
+
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }
-    public LocalDateTime getFecha_generacion() { return fecha_generacion; }
-    public void setFecha_generacion(LocalDateTime fecha_generacion) { this.fecha_generacion = fecha_generacion; }
-    public Usuario getId_admin() { return id_admin; }
-    public void setId_admin(Usuario id_admin) { this.id_admin = id_admin; }
+
+    public LocalDateTime getFechaGeneracion() { return fechaGeneracion; }
+    public void setFechaGeneracion(LocalDateTime fechaGeneracion) { this.fechaGeneracion = fechaGeneracion; }
+
+    public Usuario getAdmin() { return admin; }
+    public void setAdmin(Usuario admin) { this.admin = admin; }
 }

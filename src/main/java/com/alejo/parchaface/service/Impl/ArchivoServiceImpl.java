@@ -32,6 +32,11 @@ public class ArchivoServiceImpl implements ArchivoService {
     }
 
     @Override
+    public List<Archivo> obtenerArchivosPorEvento(Integer idEvento) {
+        return archivoRepository.findByEvento_IdEvento(idEvento);
+    }
+
+    @Override
     public Archivo actualizarArchivo(Archivo archivo) {
         return archivoRepository.save(archivo);
     }

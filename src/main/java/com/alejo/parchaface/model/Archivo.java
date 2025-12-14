@@ -12,7 +12,7 @@ public class Archivo {
 
     @ManyToOne
     @JoinColumn(name = "id_evento", nullable = false)
-    private Evento id_evento;  // Relación con Evento
+    private Evento evento;  // Relación con Evento
 
     @Column(length = 150, nullable = false)
     private String nombre_archivo;
@@ -27,8 +27,8 @@ public class Archivo {
     public Integer getId_archivo() { return id_archivo; }
     public void setId_archivo(Integer id_archivo) { this.id_archivo = id_archivo; }
 
-    public Evento getId_evento() { return id_evento; }
-    public void setId_evento(Evento id_evento) { this.id_evento = id_evento; }
+    public Evento getEvento() {return evento;}
+    public void setEvento(Evento evento) {this.evento = evento;}
 
     public String getNombre_archivo() { return nombre_archivo; }
     public void setNombre_archivo(String nombre_archivo) { this.nombre_archivo = nombre_archivo; }

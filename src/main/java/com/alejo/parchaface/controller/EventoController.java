@@ -39,7 +39,7 @@ public class EventoController {
     @PutMapping("/{id}")
     public Evento actualizar(@PathVariable Integer id, @RequestBody Evento evento) {
         // Asegurar que el id del path se use para actualizar
-        evento.setId_evento(id);
+        evento.setIdEvento(id);
         return eventoService.saveEvento(evento);
     }
 

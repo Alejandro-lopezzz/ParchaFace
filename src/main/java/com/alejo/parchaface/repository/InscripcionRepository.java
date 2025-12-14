@@ -10,8 +10,7 @@ import java.util.List;
 
 public interface InscripcionRepository extends JpaRepository<Inscripcion, Integer> {
 
-    @Query("SELECT i FROM Inscripcion i WHERE i.evento.id_evento = :idEvento")
-    List<Inscripcion> findByEventoId(@Param("idEvento") Integer idEvento);
+    List<Inscripcion> findByEvento_IdEvento(Integer idEvento);
 
 }
 

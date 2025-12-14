@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface PublicidadRepository extends JpaRepository<Publicidad, Integer> {
 
-    List<Publicidad> findByEvento_Id_evento(Integer idEvento);
+    List<Publicidad> findByEvento_IdEvento(Integer idEvento);
 
 }
 

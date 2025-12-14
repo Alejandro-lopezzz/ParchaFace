@@ -8,6 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EstadisticaRepository extends JpaRepository<Estadistica, Integer> {
 
-    @Query("SELECT e FROM Estadistica e WHERE e.id_evento.id_evento = :idEvento")
-    Optional<Estadistica> findByIdEvento(@Param("idEvento") int idEvento);
+    Optional<Estadistica> findByEvento_IdEvento(Integer idEvento);
 }

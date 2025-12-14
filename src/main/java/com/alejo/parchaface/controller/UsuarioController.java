@@ -31,7 +31,7 @@
 
         @PutMapping("/{id}")
         public Usuario actualizar(@PathVariable Integer id, @RequestBody Usuario usuario) {
-            usuario.setId_usuario(id);
+            usuario.setIdUsuario(id);
             return usuarioService.saveUsuario(usuario);
         }
 

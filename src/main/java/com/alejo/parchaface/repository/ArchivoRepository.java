@@ -9,6 +9,6 @@ import java.util.List;
 
 public interface ArchivoRepository extends JpaRepository<Archivo, Integer> {
 
-    @Query("SELECT a FROM Archivo a WHERE a.id_evento.id_evento = :idEvento")
-    List<Archivo> findByIdEvento(@Param("idEvento") Integer idEvento);
+    List<Archivo> findByEvento_IdEvento(Integer idEvento);
 }
+

@@ -38,4 +38,10 @@ public class ArchivoController {
     public void eliminarArchivo(@PathVariable int id) {
         archivoService.eliminarArchivo(id);
     }
+
+    @GetMapping("/evento/{idEvento}")
+    public List<Archivo> obtenerArchivosPorEvento(@PathVariable Integer idEvento) {
+        return archivoService.obtenerArchivosPorEvento(idEvento);
+    }
+
 }
