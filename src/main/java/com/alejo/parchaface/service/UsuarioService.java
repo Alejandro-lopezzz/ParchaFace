@@ -8,5 +8,7 @@ public interface UsuarioService {
     Usuario getUsuarioById(Integer id);
     Usuario saveUsuario(Usuario usuario);
     void deleteUsuario(Integer id);
-}
 
+    // Nuevo método para JWT
+    Usuario getUsuarioPorCorreo(String correo);
+}
