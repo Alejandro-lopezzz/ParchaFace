@@ -6,4 +6,3 @@ public record LoginRequest(
         @NotBlank String correo,
         @NotBlank String contrasena
 ) {}
-

@@ -37,7 +37,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.deleteById(id);
     }
 
-    // ⚡ Nuevo método para JWT
     @Override
     public Usuario getUsuarioPorCorreo(String correo) {
         return usuarioRepository.findByCorreo(correo)

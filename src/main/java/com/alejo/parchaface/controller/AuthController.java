@@ -38,11 +38,17 @@ public class AuthController {
                     .body(Map.of("error", "El correo ya existe"));
         }
 
+        // Verificar que la contraseña y la confirmación coinciden
+        if (!request.contrasena().equals(request.confirmarContrasena())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Las contraseñas no coinciden"));
+        }
+
         Usuario usuario = new Usuario();
-        usuario.setNombre(request.usuario()); // usamos "usuario" como nombre
+        usuario.setNombre(request.usuario());
         usuario.setCorreo(request.correo());
         usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
-        usuario.setRol(Rol.valueOf(request.rol().trim().toUpperCase()));
+        usuario.setRol(Rol.USUARIO); // El rol es fijo
         usuario.setEstado(Estado.ACTIVO);
 
         usuarioRepository.save(usuario);
@@ -50,7 +56,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("mensaje", "Usuario registrado"));
     }
 
-    // ✅ LOGIN (sin JWT aún)
+    // ✅ LOGIN
     @PostMapping("/signin")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
