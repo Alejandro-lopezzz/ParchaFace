@@ -62,11 +62,17 @@ public class AuthController {
 
         usuarioRepository.save(usuario);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "mensaje", "Usuario registrado",
-                "correo", correo,
-                "rol", usuario.getRol().name()
-        ));
+        List<String> roles = List.of(usuario.getRol().name());
+        String token = JwtUtil.generateToken(usuario.getCorreo(), roles, usuario.getNombre());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .body(Map.of(
+                        "tokenType", "Bearer",
+                        "token", token,
+                        "correo", usuario.getCorreo(),
+                        "rol", usuario.getRol().name()
+                ));
     }
 
     // ✅ LOGIN
@@ -97,10 +103,8 @@ public class AuthController {
 
         // Roles como string (mismo formato que ya estabas usando)
         List<String> roles = List.of(usuario.getRol().name());
+        String token = JwtUtil.generateToken(usuario.getCorreo(), roles, usuario.getNombre());
 
-        String token = JwtUtil.generateToken(usuario.getCorreo(), roles);
-
-        // Además de retornarlo en JSON, lo ponemos en el header Authorization
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .body(Map.of(
