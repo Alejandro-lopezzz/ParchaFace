@@ -14,53 +14,77 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String sp = request.getServletPath(); // ej: /auth/signin
+        String method = request.getMethod();
 
-        String path = request.getServletPath();
+        // Debug
+        System.out.println("[JwtFilter] " + method + " servletPath=" + sp + " uri=" + request.getRequestURI());
 
-        // 🔥 IGNORAR AUTH COMPLETAMENTE para /auth
-        if (path.startsWith("/auth")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if ("OPTIONS".equalsIgnoreCase(method)) return true;
+
+        // IMPORTANTE: evita loop de /error protegido
+        if ("/error".equals(sp)) return true;
+
+        return sp.startsWith("/auth/")
+                || sp.equals("/auth")
+                || sp.startsWith("/swagger-ui")
+                || sp.startsWith("/v3/api-docs")
+                || sp.equals("/swagger-ui.html");
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
+            throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("[JwtFilter] Authorization raw=[" + authHeader + "]");
 
-        // 🔥 SI NO HAY TOKEN, solo pasa el request (puedes cambiarlo a 401 si quieres proteger TODO)
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        // Si no hay header -> deja que Spring Security decida (401 por entrypoint)
+        if (authHeader == null || authHeader.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
+        String header = authHeader.trim();
 
-        // ⚠️ Validar token
-        if (!JwtUtil.validateToken(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // Normaliza "Bearer:" -> "Bearer "
+        if (header.regionMatches(true, 0, "Bearer:", 0, 7)) {
+            header = "Bearer " + header.substring(7).trim();
+        }
+
+        // Debe ser "Bearer <token>"
+        if (!header.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            filterChain.doFilter(request, response);
             return;
         }
 
-        // ⚡ Extraer correo del token
-        String correo = JwtUtil.getCorreoFromToken(token);
-        System.out.println("Usuario autenticado: " + correo);
+        String token = header.substring(7).trim();
+        if (token.isEmpty()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        // 🔹 Crear Authentication y setear en SecurityContext
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
-                        correo,
-                        null,
-                        null // aquí más adelante puedes agregar roles si quieres
-                );
+        // Token inválido -> responde 401 y corta
+        if (!JwtUtil.validateToken(token)) {
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido");
+            return;
+        }
 
-        authentication.setDetails(
-                new WebAuthenticationDetailsSource().buildDetails(request)
-        );
+        // Si no hay auth aún, la seteamos
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            String correo = JwtUtil.getCorreoFromToken(token);
+            var roles = JwtUtil.getRolesFromToken(token);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            var authentication =
+                    new UsernamePasswordAuthenticationToken(correo, null, roles);
+
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
 
         filterChain.doFilter(request, response);
     }
