@@ -72,6 +72,7 @@ public class SecurityConfig {
                         // Públicos
                         .requestMatchers(
                                 "/auth/signin",
+                                "/auth/register",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
