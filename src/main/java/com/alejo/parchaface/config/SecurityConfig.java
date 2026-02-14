@@ -30,11 +30,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // OJO: allowCredentials=true + "*" no es válido para allowedOrigins,
-        // pero con allowedOriginPatterns sí funciona.
         config.setAllowCredentials(true);
         config.setAllowedOriginPatterns(List.of("*"));
-
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
@@ -66,13 +63,12 @@ public class SecurityConfig {
                         // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // IMPORTANTE: permitir /error para evitar loops
+                        // Importante para evitar loops
                         .requestMatchers("/error").permitAll()
 
-                        // Públicos
+                        // ✅ Públicos: Swagger + Auth (incluye forgot/reset)
                         .requestMatchers(
-                                "/auth/signin",
-                                "/auth/register",
+                                "/auth/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
@@ -82,7 +78,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // ✅ Esta era la línea: activada y en el lugar correcto
+                // Filtro JWT
                 .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
