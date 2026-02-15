@@ -31,12 +31,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // =============================
-    // Generar token con roles
-    // =============================
     public static String generateToken(String correo, List<String> roles) {
+        return generateToken(correo, roles, null);
+    }
+
+    public static String generateToken(String correo, List<String> roles, String nombre) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", roles == null ? List.of() : roles);
+        if (nombre != null && !nombre.isBlank()) {
+            claims.put("nombre", nombre);
+        }
 
         Date now = new Date();
         Date exp = new Date(now.getTime() + EXPIRATION_TIME_MS);
