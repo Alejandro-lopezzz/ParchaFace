@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# uploads de portadas
+/uploads/
+/uploads/eventos/
+
+# logs
+*.log
+
+# build
+/target/
+
