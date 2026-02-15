@@ -65,17 +65,13 @@ public class EventoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(evento);
     }
 
-    // =========================
-    // GET POR ESTADO
-    // =========================
+
     @GetMapping("/estado/{estado}")
     public List<Evento> obtenerPorEstado(@PathVariable EstadoEvento estado) {
         return eventoService.getEventosPorEstado(estado);
     }
 
-    // =========================
-    // PUT ACTUALIZAR (ejemplo: solo ADMIN)
-    // =========================
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public Evento actualizar(@PathVariable Integer id,
@@ -85,9 +81,7 @@ public class EventoController {
         return eventoService.saveEvento(evento);
     }
 
-    // =========================
-    // DELETE — ADMIN JWT
-    // =========================
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {

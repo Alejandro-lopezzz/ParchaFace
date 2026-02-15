@@ -2,7 +2,9 @@ package com.alejo.parchaface.model;
 
 import com.alejo.parchaface.model.enums.Estado;
 import com.alejo.parchaface.model.enums.Rol;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +23,9 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 100)
     private String correo;
 
-    @Column(nullable = false, length = 255)
+    // Nunca debe salir en JSON
+    @Column(name = "contrasena", nullable = false)
+    @JsonIgnore
     private String contrasena;
 
     @Enumerated(EnumType.STRING)
@@ -32,9 +36,12 @@ public class Usuario {
     @Column(nullable = false)
     private Estado estado = Estado.ACTIVO;
 
+    // Evita JSON enorme y posibles ciclos al serializar relaciones
+    @JsonIgnore
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Inscripcion> inscripciones = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Notificacion> notificaciones = new ArrayList<>();
 
