@@ -1,13 +1,13 @@
 package com.alejo.parchaface.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-public class CrearEventoDTO {
+public class CrearEventoForm {
 
     @NotBlank(message = "El título es obligatorio")
     @Size(max = 150)
@@ -19,39 +19,24 @@ public class CrearEventoDTO {
     @Size(max = 80)
     private String categoria;
 
-    @Size(max = 500)
-    private String imagenPortadaUrl;
+    // ✅ ARCHIVO REAL (multipart)
+    private MultipartFile imagenPortada; // opcional
 
-    @Size(max = 80)
-    private String imagenPortadaContentType;
-
-    // ======================
-    // Fecha y horas
-    // ======================
     @NotNull(message = "La fecha es obligatoria")
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fecha;
 
     @NotNull(message = "La hora de inicio es obligatoria")
-    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime horaInicio;
 
     @NotNull(message = "La hora de finalización es obligatoria")
-    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime horaFin;
 
-    // ======================
-    // Modalidad
-    // ======================
     @NotNull(message = "Debes indicar si el evento es en línea o no")
     private Boolean eventoEnLinea;
 
     @Size(max = 500)
     private String urlVirtual;
 
-    // ======================
-    // Ubicación (presencial)
-    // ======================
     @Size(max = 200)
     private String ubicacion;
 
@@ -64,9 +49,6 @@ public class CrearEventoDTO {
     @Size(max = 120)
     private String ciudad;
 
-    // ======================
-    // Cupo / Precio
-    // ======================
     @NotNull(message = "El cupo es obligatorio")
     @Min(value = 1, message = "El cupo debe ser mayor a 0")
     private Integer cupo;
@@ -77,9 +59,6 @@ public class CrearEventoDTO {
     @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     private BigDecimal precio;
 
-    // ======================
-    // Contacto
-    // ======================
     @Email(message = "Email de contacto inválido")
     @Size(max = 150)
     private String emailContacto;
@@ -90,9 +69,6 @@ public class CrearEventoDTO {
     @Size(max = 500)
     private String sitioWeb;
 
-    // ======================
-    // Privacidad / Config
-    // ======================
     @NotNull(message = "Debes indicar si el evento es público o no")
     private Boolean eventoPublico;
 
@@ -105,9 +81,9 @@ public class CrearEventoDTO {
     @NotNull(message = "Debes indicar si envías recordatorios automáticos o no")
     private Boolean recordatoriosAutomaticos;
 
-    // =========================================================
+    // ======================
     // VALIDACIONES CONDICIONALES
-    // =========================================================
+    // ======================
 
     @AssertTrue(message = "Si el evento es en línea, debes enviar urlVirtual")
     public boolean isUrlVirtualValida() {
@@ -141,15 +117,19 @@ public class CrearEventoDTO {
         return true;
     }
 
-    // ✅ ELIMINADA la validación rígida:
-    // @AssertTrue(message = "horaFin debe ser mayor que horaInicio")
-    // public boolean isRangoHoraValido() { ... }
+    // ✅ Validación de archivo (si llega)
+    @AssertTrue(message = "La imagen debe ser JPG/JPEG/PNG/WEBP")
+    public boolean isImagenValida() {
+        if (imagenPortada == null || imagenPortada.isEmpty()) return true;
 
-    @AssertTrue(message = "La imagen de portada debe ser JPG (image/jpeg o image/jpg) si envías contentType")
-    public boolean isImagenPortadaJpg() {
-        if (imagenPortadaContentType == null || imagenPortadaContentType.isBlank()) return true;
-        String ct = imagenPortadaContentType.trim().toLowerCase();
-        return ct.equals("image/jpeg") || ct.equals("image/jpg");
+        String ct = imagenPortada.getContentType();
+        if (ct == null) return false;
+
+        ct = ct.toLowerCase().trim();
+        return ct.equals("image/jpeg")
+                || ct.equals("image/jpg")
+                || ct.equals("image/png")
+                || ct.equals("image/webp");
     }
 
     // ======================
@@ -165,11 +145,8 @@ public class CrearEventoDTO {
     public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
 
-    public String getImagenPortadaUrl() { return imagenPortadaUrl; }
-    public void setImagenPortadaUrl(String imagenPortadaUrl) { this.imagenPortadaUrl = imagenPortadaUrl; }
-
-    public String getImagenPortadaContentType() { return imagenPortadaContentType; }
-    public void setImagenPortadaContentType(String imagenPortadaContentType) { this.imagenPortadaContentType = imagenPortadaContentType; }
+    public MultipartFile getImagenPortada() { return imagenPortada; }
+    public void setImagenPortada(MultipartFile imagenPortada) { this.imagenPortada = imagenPortada; }
 
     public LocalDate getFecha() { return fecha; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
