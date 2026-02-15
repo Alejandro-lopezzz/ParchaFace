@@ -36,4 +36,10 @@ public class UsuarioServiceImpl implements UsuarioService {
     public void deleteUsuario(Integer id) {
         usuarioRepository.deleteById(id);
     }
+
+    @Override
+    public Usuario getUsuarioPorCorreo(String correo) {
+        return usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con correo: " + correo));
+    }
 }

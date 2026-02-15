@@ -32,7 +32,7 @@ public class InscripcionController {
     @PutMapping("/{id}")
     public Inscripcion updateInscripcion(@PathVariable Integer id, @RequestBody Inscripcion inscripcion) {
         // Seteamos el id del path en el objeto antes de actualizar
-        inscripcion.setId_inscripcion(id);
+        inscripcion.setIdInscripcion(id);
         return inscripcionService.updateInscripcion(inscripcion);
     }
 
