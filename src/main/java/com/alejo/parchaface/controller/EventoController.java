@@ -79,8 +79,22 @@ public class EventoController {
     }
 
     // =========================
-    // GET POR ESTADO
+    // POST GUARDAR BORRADOR — MULTIPART/FORM-DATA
     // =========================
+    @PostMapping(path = "/borrador", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public ResponseEntity<Evento> guardarBorrador(
+            @Valid @ModelAttribute CrearEventoForm form,
+            Authentication authentication
+    ) {
+        Usuario organizador = getOrganizador(authentication);
+        var imagen = form.getImagenPortada();
+
+        Evento evento = eventoService.crearEvento(form, imagen, organizador, EstadoEvento.borrador);
+        return ResponseEntity.status(HttpStatus.CREATED).body(evento);
+    }
+
+    // ...existing code...
     @GetMapping("/estado/{estado}")
     public List<Evento> obtenerPorEstado(@PathVariable EstadoEvento estado) {
         return eventoService.getEventosPorEstado(estado);

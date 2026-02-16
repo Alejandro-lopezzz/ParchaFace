@@ -212,8 +212,89 @@ public class EventoServiceImpl implements EventoService {
     }
 
     // =========================
-    // Helpers
+    // CREAR EVENTO — FORM-DATA con estado específico (para borradores)
     // =========================
+    @Override
+    public Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado) {
+
+        Evento evento = new Evento();
+
+        // Básicos
+        evento.setTitulo(form.getTitulo());
+        evento.setDescripcion(form.getDescripcion());
+        evento.setCategoria(form.getCategoria());
+
+        // Fecha/hora (inicio como LocalDateTime = fecha + horaInicio)
+        evento.setFecha(LocalDateTime.of(form.getFecha(), form.getHoraInicio()));
+        evento.setHoraInicio(form.getHoraInicio());
+        evento.setHoraFin(form.getHoraFin());
+
+        // Modalidad
+        boolean enLinea = Boolean.TRUE.equals(form.getEventoEnLinea());
+        evento.setEventoEnLinea(enLinea);
+
+        if (enLinea) {
+            evento.setUrlVirtual(form.getUrlVirtual());
+            evento.setUbicacion(null);
+            evento.setNombreLugar(null);
+            evento.setDireccionCompleta(null);
+            evento.setCiudad(null);
+        } else {
+            evento.setUrlVirtual(null);
+            evento.setUbicacion(form.getUbicacion());
+            evento.setNombreLugar(form.getNombreLugar());
+            evento.setDireccionCompleta(form.getDireccionCompleta());
+            evento.setCiudad(form.getCiudad());
+        }
+
+        // Cupo / Precio
+        evento.setCupo(form.getCupo());
+
+        boolean gratuito = Boolean.TRUE.equals(form.getEventoGratuito());
+        evento.setEventoGratuito(gratuito);
+        evento.setPrecio(gratuito ? null : form.getPrecio());
+
+        // Contacto
+        evento.setEmailContacto(form.getEmailContacto());
+        evento.setTelefonoContacto(form.getTelefonoContacto());
+        evento.setSitioWeb(form.getSitioWeb());
+
+        // Privacidad
+        boolean publico = Boolean.TRUE.equals(form.getEventoPublico());
+        evento.setEventoPublico(publico);
+        evento.setDetallePrivado(publico ? null : form.getDetallePrivado());
+
+        // Config
+        evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
+        evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
+
+        // ======================
+        // Imagen (archivo real)
+        // ======================
+        MultipartFile file = imagenPortada;
+        if (file == null) {
+            try {
+                file = form.getImagenPortada();
+            } catch (Exception ignored) {}
+        }
+
+        if (file != null && !file.isEmpty()) {
+            SavedImage saved = saveCoverToDisk(file);
+            evento.setImagenPortadaUrl(saved.publicUrl());
+            evento.setImagenPortadaContentType(saved.contentType());
+        } else {
+            evento.setImagenPortadaUrl(null);
+            evento.setImagenPortadaContentType(null);
+        }
+
+        // Relaciones y estado
+        evento.setOrganizador(organizador);
+        evento.setEstadoEvento(estado != null ? estado : EstadoEvento.activo);
+
+        return eventoRepository.save(evento);
+    }
+
+    // ...existing code...
     private SavedImage saveCoverToDisk(MultipartFile file) {
         try {
             Files.createDirectories(UPLOAD_DIR);
