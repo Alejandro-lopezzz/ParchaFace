@@ -63,13 +63,17 @@ public class AuthController {
         usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
         usuario.setRol(Rol.USUARIO);
         usuario.setEstado(Estado.ACTIVO);
+        usuario.setPreferenciasCompletadas(false);
+        usuario.setCategoriasPreferidas(List.of());
 
         usuarioRepository.save(usuario);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "mensaje", "Usuario registrado",
                 "correo", correo,
-                "rol", usuario.getRol().name()
+                "rol", usuario.getRol().name(),
+                "preferenciasCompletadas", usuario.getPreferenciasCompletadas(),
+                "categoriasPreferidas", usuario.getCategoriasPreferidas()
         ));
     }
 
