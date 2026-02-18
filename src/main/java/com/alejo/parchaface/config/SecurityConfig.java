@@ -21,88 +21,88 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public JwtFilter jwtFilter() {
-        return new JwtFilter();
-    }
+  @Bean
+  public JwtFilter jwtFilter() {
+    return new JwtFilter();
+  }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ Mejor práctica: define tus orígenes del front
-        // Si quieres dejarlo abierto, puedes volver a "*", pero con credentials no aplica "*"
-        config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:4200",
-                "http://127.0.0.1:4200",
-                "*"
-        ));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowCredentials(true);
+    config.setAllowedOriginPatterns(List.of(
+      "http://localhost:4200",
+      "http://127.0.0.1:4200",
+      "*"
+    ));
+    config.setAllowedHeaders(List.of("*"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+  }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
+    http
+      .csrf(csrf -> csrf.disable())
+      .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+      .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+      .formLogin(form -> form.disable())
+      .httpBasic(basic -> basic.disable())
 
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")
-                        )
-                        .accessDeniedHandler((request, response, accessDeniedException) ->
-                                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Prohibido")
-                        )
-                )
+      .exceptionHandling(ex -> ex
+        .authenticationEntryPoint((request, response, authException) ->
+          response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")
+        )
+        .accessDeniedHandler((request, response, accessDeniedException) ->
+          response.sendError(HttpServletResponse.SC_FORBIDDEN, "Prohibido")
+        )
+      )
 
-                .authorizeHttpRequests(auth -> auth
-                        // Preflight
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+      .authorizeHttpRequests(auth -> auth
+        // Preflight
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Importante para evitar loops
-                        .requestMatchers("/error").permitAll()
+        // Importante para evitar loops
+        .requestMatchers("/error").permitAll()
 
-                        // ✅ Servir uploads públicamente (IMÁGENES)
-                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+        // ✅ Servir uploads públicamente (IMÁGENES)
+        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
 
-                        // ✅ Públicos: Swagger + Auth
-                        .requestMatchers(
-                                "/auth/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/eventos").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/eventos/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/eventos/public").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+        // ✅ Públicos: Swagger + Auth
+        .requestMatchers(
+          "/auth/**",
+          "/swagger-ui/**",
+          "/v3/api-docs/**",
+          "/swagger-ui.html"
+        ).permitAll()
 
+        // ✅ Públicos: Eventos
+        .requestMatchers(HttpMethod.GET, "/eventos").permitAll()
+        .requestMatchers(HttpMethod.GET, "/eventos/*").permitAll()
+        .requestMatchers(HttpMethod.GET, "/eventos/public").permitAll()
 
+        // ✅ CLIMA (PÚBLICO)
+        .requestMatchers(HttpMethod.GET, "/api/clima").permitAll()
+        // Si en el futuro haces /api/clima/otra-cosa:
+        // .requestMatchers(HttpMethod.GET, "/api/clima/**").permitAll()
 
-                        // Todo lo demás requiere JWT
-                        .anyRequest().authenticated()
-                )
+        // Todo lo demás requiere JWT
+        .anyRequest().authenticated()
+      )
 
-                // Filtro JWT
-                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+      // Filtro JWT
+      .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
+    return http.build();
+  }
 
-
-        return http.build();
-    }
-
-    @PostConstruct
-    public void loaded() {
-        System.out.println(">>> SecurityConfig LOADED");
-    }
+  @PostConstruct
+  public void loaded() {
+    System.out.println(">>> SecurityConfig LOADED");
+  }
 }
