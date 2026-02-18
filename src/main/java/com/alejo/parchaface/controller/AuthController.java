@@ -102,7 +102,13 @@ public class AuthController {
         }
 
         List<String> roles = List.of(usuario.getRol().name());
-        String token = JwtUtil.generateToken(usuario.getCorreo(), roles);
+
+        String token = JwtUtil.generateToken(
+                usuario.getIdUsuario(),
+                usuario.getCorreo(),
+                roles,
+                usuario.getNombre());
+
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)

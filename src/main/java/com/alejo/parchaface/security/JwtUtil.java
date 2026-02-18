@@ -117,4 +117,29 @@ public class JwtUtil {
                 .parseClaimsJws(token.trim()) // trim por seguridad
                 .getBody();
     }
+
+    public static String generateToken(Integer idUsuario, String correo, List<String> roles, String nombre) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("id", idUsuario); // ✅ AQUI METES EL ID
+        claims.put("roles", roles == null ? List.of() : roles);
+
+        if (nombre != null && !nombre.isBlank()) {
+            claims.put("nombre", nombre);
+        }
+
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + EXPIRATION_TIME_MS);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(correo)
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+
+
+
 }

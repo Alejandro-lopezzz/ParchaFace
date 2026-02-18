@@ -55,6 +55,12 @@ public class Usuario {
     @Column(name = "categoria")
     private List<String> categoriasPreferidas = new ArrayList<>();
 
+    @Column(name = "foto_perfil")
+    private String fotoPerfil;
+
+    @Column(name = "foto_portada")
+    private String fotoPortada;
+
     public Integer getIdUsuario() { return idUsuario; }
     public void setIdUsuario(Integer idUsuario) { this.idUsuario = idUsuario; }
 
@@ -84,4 +90,10 @@ public class Usuario {
 
     public List<String> getCategoriasPreferidas() { return categoriasPreferidas; }
     public void setCategoriasPreferidas(List<String> categoriasPreferidas) { this.categoriasPreferidas = categoriasPreferidas != null ? categoriasPreferidas : new ArrayList<>(); }
+
+    public String getFotoPerfil() { return fotoPerfil; }
+    public void setFotoPerfil(String fotoPerfil) { this.fotoPerfil = fotoPerfil; }
+
+    public String getFotoPortada() { return fotoPortada; }
+    public void setFotoPortada(String fotoPortada) { this.fotoPortada = fotoPortada; }
 }
