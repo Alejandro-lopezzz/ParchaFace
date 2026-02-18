@@ -91,6 +91,8 @@ public class SecurityConfig {
         // Si en el futuro haces /api/clima/otra-cosa:
         // .requestMatchers(HttpMethod.GET, "/api/clima/**").permitAll()
 
+        .requestMatchers(HttpMethod.GET, "/api/clima/ciudades").permitAll()
+
         // Todo lo demás requiere JWT
         .anyRequest().authenticated()
       )
