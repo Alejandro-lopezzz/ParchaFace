@@ -30,8 +30,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
+        // ✅ Mejor práctica: define tus orígenes del front
+        // Si quieres dejarlo abierto, puedes volver a "*", pero con credentials no aplica "*"
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:4200",
+                "http://127.0.0.1:4200",
+                "*"
+        ));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
@@ -66,13 +72,22 @@ public class SecurityConfig {
                         // Importante para evitar loops
                         .requestMatchers("/error").permitAll()
 
-                        // ✅ Públicos: Swagger + Auth (incluye forgot/reset)
+                        // ✅ Servir uploads públicamente (IMÁGENES)
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+                        // ✅ Públicos: Swagger + Auth
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/eventos").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/eventos/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/eventos/public").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+
 
                         // Todo lo demás requiere JWT
                         .anyRequest().authenticated()
@@ -80,6 +95,8 @@ public class SecurityConfig {
 
                 // Filtro JWT
                 .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+
+
 
         return http.build();
     }
