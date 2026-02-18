@@ -2,6 +2,7 @@ package com.alejo.parchaface.model;
 
 import com.alejo.parchaface.model.enums.EstadoEvento;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -131,8 +132,10 @@ public class Evento {
     @JoinColumn(name = "id_organizador", nullable = false)
     private Usuario organizador;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "evento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Inscripcion> inscripciones = new ArrayList<>();
+
 
     // ======================
     // Hooks
