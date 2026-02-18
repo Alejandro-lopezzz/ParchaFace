@@ -12,6 +12,10 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Intege
 
     List<Inscripcion> findByEvento_IdEvento(Integer idEvento);
 
+    boolean existsByEvento_IdEventoAndUsuario_IdUsuario(Integer idEvento, Integer idUsuario);
+
+    long countByEvento_IdEvento(Integer idEvento);
 }
+
 
 

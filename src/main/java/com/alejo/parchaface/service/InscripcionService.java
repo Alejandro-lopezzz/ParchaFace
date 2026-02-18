@@ -13,5 +13,7 @@ public interface InscripcionService {
 
     Inscripcion updateInscripcion(Inscripcion inscripcion);
 
+    Inscripcion inscribirseAEvento(Integer idEvento, String correo);
+
     void deleteInscripcion(Integer id);
 }
