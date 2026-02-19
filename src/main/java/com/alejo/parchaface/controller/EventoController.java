@@ -104,21 +104,92 @@ public class EventoController {
     // PUT (ADMIN)
     // =========================
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
-    public Evento actualizar(@PathVariable Integer id, @RequestBody Evento evento) {
-        evento.setIdEvento(id);
-        return eventoService.saveEvento(evento);
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public Evento actualizar(@PathVariable Integer id, @RequestBody Evento cambios, Authentication authentication) {
+
+        Evento existente = eventoService.getEventoById(id);
+        if (existente == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
+        }
+
+        boolean esAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
+
+        String correoActual = authentication.getName(); // viene del JWT (subject = correo)
+
+        if (!esAdmin) {
+            if (existente.getOrganizador() == null || existente.getOrganizador().getCorreo() == null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
+            }
+            if (!existente.getOrganizador().getCorreo().equalsIgnoreCase(correoActual)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el creador puede editar este evento");
+            }
+        }
+
+        //  Merge de campos editables (no cambiar id ni organizador)
+        existente.setTitulo(cambios.getTitulo());
+        existente.setDescripcion(cambios.getDescripcion());
+        existente.setCategoria(cambios.getCategoria());
+
+        existente.setFecha(cambios.getFecha());
+        existente.setHoraInicio(cambios.getHoraInicio());
+        existente.setHoraFin(cambios.getHoraFin());
+
+        existente.setEventoEnLinea(cambios.getEventoEnLinea());
+        existente.setUrlVirtual(cambios.getUrlVirtual());
+        existente.setUbicacion(cambios.getUbicacion());
+        existente.setNombreLugar(cambios.getNombreLugar());
+        existente.setDireccionCompleta(cambios.getDireccionCompleta());
+        existente.setCiudad(cambios.getCiudad());
+
+        existente.setCupo(cambios.getCupo());
+        existente.setEventoGratuito(cambios.getEventoGratuito());
+        existente.setPrecio(cambios.getPrecio());
+
+        existente.setEmailContacto(cambios.getEmailContacto());
+        existente.setTelefonoContacto(cambios.getTelefonoContacto());
+        existente.setSitioWeb(cambios.getSitioWeb());
+
+        existente.setEventoPublico(cambios.getEventoPublico());
+        existente.setDetallePrivado(cambios.getDetallePrivado());
+
+        existente.setPermitirComentarios(cambios.getPermitirComentarios());
+        existente.setRecordatoriosAutomaticos(cambios.getRecordatoriosAutomaticos());
+
+        return eventoService.saveEvento(existente);
     }
+
 
     // =========================
     // DELETE (ADMIN)
     // =========================
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public ResponseEntity<Void> eliminar(@PathVariable Integer id, Authentication authentication) {
+
+        Evento existente = eventoService.getEventoById(id);
+        if (existente == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
+        }
+
+        boolean esAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
+
+        String correoActual = authentication.getName();
+
+        if (!esAdmin) {
+            if (existente.getOrganizador() == null || existente.getOrganizador().getCorreo() == null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado");
+            }
+            if (!existente.getOrganizador().getCorreo().equalsIgnoreCase(correoActual)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el creador puede eliminar este evento");
+            }
+        }
+
         eventoService.deleteEvento(id);
         return ResponseEntity.noContent().build();
     }
+
 
     // =========================
     // Helper auth
