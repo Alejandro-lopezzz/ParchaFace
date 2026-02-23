@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.alejo.parchaface.repository.UsuarioRepository;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -20,6 +21,7 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
+    private UsuarioRepository usuarioRepository;
 
     @GetMapping
     public List<Usuario> obtenerTodos() {
@@ -39,9 +41,34 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public Usuario actualizar(@PathVariable Integer id, @RequestBody Usuario usuario) {
-        usuario.setIdUsuario(id);
-        return usuarioService.saveUsuario(usuario);
+    public ResponseEntity<?> actualizar(@PathVariable Integer id, @RequestBody Usuario cambios) {
+      Usuario existente = usuarioService.getUsuarioById(id);
+      if (existente == null) return ResponseEntity.notFound().build();
+
+      if (cambios.getNombre() != null && !cambios.getNombre().isBlank()) {
+        existente.setNombre(cambios.getNombre().trim());
+      }
+
+      if (cambios.getCorreo() != null && !cambios.getCorreo().isBlank()) {
+        String nuevoCorreo = cambios.getCorreo().trim().toLowerCase();
+        if (!nuevoCorreo.equalsIgnoreCase(existente.getCorreo())) {
+          if (usuarioRepository.findByCorreo(nuevoCorreo).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("El correo ya existe");
+          }
+          existente.setCorreo(nuevoCorreo);
+        }
+      }
+
+      if (cambios.getAcercaDe() != null) {
+        existente.setAcercaDe(cambios.getAcercaDe().trim());
+      }
+
+      if (cambios.getRedesSociales() != null) {
+        existente.setRedesSociales(cambios.getRedesSociales());
+      }
+
+      Usuario actualizado = usuarioService.saveUsuario(existente);
+      return ResponseEntity.ok(actualizado);
     }
 
     // ✅ FOTO DE PERFIL (multipart)
