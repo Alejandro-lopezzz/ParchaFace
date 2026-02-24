@@ -1,5 +1,6 @@
 package com.alejo.parchaface.controller;
 
+import com.alejo.parchaface.dto.VerifyResetCodeRequest;
 import com.alejo.parchaface.dto.ForgotPasswordRequest;
 import com.alejo.parchaface.dto.LoginRequest;
 import com.alejo.parchaface.dto.RegisterRequest;
@@ -57,6 +58,13 @@ public class AuthController {
                     .body(Map.of("error", "Las contraseñas no coinciden"));
         }
 
+        // ✅ NUEVO: política de contraseña fuerte en registro
+        if (!esContrasenaFuerte(request.contrasena())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "La contraseña debe tener mínimo 8 caracteres e incluir mayúscula, minúscula, número y símbolo."
+            ));
+        }
+
         Usuario usuario = new Usuario();
         usuario.setNombre(request.usuario());
         usuario.setCorreo(correo);
@@ -96,6 +104,13 @@ public class AuthController {
                     .body(Map.of("error", "Usuario inactivo o bloqueado"));
         }
 
+        // ✅ NUEVO (opcional): bloquear login si la contraseña NO cumple política
+        // Si no quieres bloquear a usuarios antiguos, elimina este bloque.
+        if (!esContrasenaFuerte(request.contrasena())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Tu contraseña no cumple la política. Restablécela para continuar."));
+        }
+
         if (!passwordEncoder.matches(request.contrasena(), usuario.getContrasena())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Credenciales inválidas"));
@@ -107,8 +122,8 @@ public class AuthController {
                 usuario.getIdUsuario(),
                 usuario.getCorreo(),
                 roles,
-                usuario.getNombre());
-
+                usuario.getNombre()
+        );
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -162,7 +177,27 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@Valid @RequestBody VerifyResetCodeRequest request) {
+
+        String correo = normalizeEmail(request.getCorreo());
+
+        try {
+            passwordResetService.validarCodigo(correo, request.getCodigo());
+            return ResponseEntity.ok(Map.of("mensaje", "Código válido"));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     private String normalizeEmail(String correo) {
         return correo == null ? "" : correo.trim().toLowerCase();
+    }
+
+    // ✅ Helper: política de contraseña fuerte
+    private boolean esContrasenaFuerte(String pass) {
+        if (pass == null) return false;
+        return pass.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
     }
 }

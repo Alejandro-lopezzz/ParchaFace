@@ -37,6 +37,23 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     @Override
+    public void validarCodigo(String correo, String codigo) {
+        String email = normalizeEmail(correo);
+
+        PasswordResetCode prc = codeRepo
+                .findFirstByCorreoAndUsadoFalseAndExpiraEnAfterOrderByCreadoEnDesc(email, LocalDateTime.now())
+                .orElseThrow(() -> new RuntimeException("Código inválido o expirado"));
+
+        if (codigo == null || !codigo.matches("\\d{6}")) {
+            throw new RuntimeException("Código inválido");
+        }
+
+        if (!encoder.matches(codigo, prc.getCodigoHash())) {
+            throw new RuntimeException("Código inválido");
+        }
+    }
+
+    @Override
     public void enviarCodigo(String correo) {
         String email = normalizeEmail(correo);
 
@@ -72,15 +89,27 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     public String restablecer(String correo, String codigo, String nuevaContrasena) {
         String email = normalizeEmail(correo);
 
-        PasswordResetCode prc = codeRepo.findTopByCorreoOrderByCreadoEnDesc(email)
-                .orElseThrow(() -> new RuntimeException("Código inválido"));
+        // ✅ Trae SOLO un código válido: no usado y no expirado
+        PasswordResetCode prc = codeRepo
+                .findFirstByCorreoAndUsadoFalseAndExpiraEnAfterOrderByCreadoEnDesc(email, LocalDateTime.now())
+                .orElseThrow(() -> new RuntimeException("Código inválido o expirado"));
 
-        if (prc.isUsado()) throw new RuntimeException("Código ya usado");
-        if (LocalDateTime.now().isAfter(prc.getExpiraEn())) throw new RuntimeException("Código expirado");
-        if (!encoder.matches(codigo, prc.getCodigoHash())) throw new RuntimeException("Código inválido");
+        // ✅ Validación extra: debe ser 6 dígitos
+        if (codigo == null || !codigo.matches("\\d{6}")) {
+            throw new RuntimeException("Código inválido");
+        }
+
+        // ✅ Validación real: el código debe coincidir con el hash guardado
+        if (!encoder.matches(codigo, prc.getCodigoHash())) {
+            throw new RuntimeException("Código inválido");
+        }
 
         Usuario usuario = usuarioRepo.findByCorreo(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no existe"));
+
+        if (nuevaContrasena == null || !nuevaContrasena.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$")) {
+            throw new RuntimeException("La contraseña debe tener mínimo 8 caracteres e incluir mayúscula, minúscula, número y símbolo.");
+        }
 
         usuario.setContrasena(encoder.encode(nuevaContrasena));
         usuarioRepo.save(usuario);
@@ -88,6 +117,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         prc.setUsado(true);
         codeRepo.save(prc);
 
+        // ✅ OPCIONAL: devolver token para que quede logueado
         List<String> roles = List.of(usuario.getRol().name());
         return JwtUtil.generateToken(usuario.getCorreo(), roles);
     }
