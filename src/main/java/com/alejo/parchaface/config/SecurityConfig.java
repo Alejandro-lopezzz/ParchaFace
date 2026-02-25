@@ -93,6 +93,8 @@ public class SecurityConfig {
 
         .requestMatchers(HttpMethod.GET, "/api/clima/ciudades").permitAll()
 
+        .requestMatchers(HttpMethod.GET, "/api/places").permitAll()
+
         // Todo lo demás requiere JWT
         .anyRequest().authenticated()
       )
