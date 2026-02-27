@@ -14,31 +14,20 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     @Override
-
-protected boolean shouldNotFilter(HttpServletRequest request) {
-    String uri = request.getRequestURI();   // más confiable que getServletPath()
-    String method = request.getMethod();
-
-    // Debug opcional
-    System.out.println("[JwtFilter] " + method + " uri=" + uri);
-
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();   // más confiable que getServletPath()
         String method = request.getMethod();
 
-        // Debug opcional
+        // Debug opcional (puedes quitarlo después)
         System.out.println("[JwtFilter] " + method + " uri=" + uri);
- 
 
-    if ("OPTIONS".equalsIgnoreCase(method)) return true;
-
-
-    // evita loop de /error protegido
-    if ("/error".equals(uri)) return true;
+        // Preflight
+        if ("OPTIONS".equalsIgnoreCase(method)) return true;
 
         // evita loop de /error protegido
         if ("/error".equals(uri)) return true;
 
+        // Rutas públicas (sin JWT)
         return uri.startsWith("/auth/")
                 || uri.equals("/auth")
                 || uri.startsWith("/swagger-ui")
@@ -47,14 +36,6 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
                 || uri.startsWith("/uploads/");
     }
 
-
-    return uri.startsWith("/auth/")
-            || uri.equals("/auth")
-            || uri.startsWith("/swagger-ui")
-            || uri.startsWith("/v3/api-docs")
-            || uri.equals("/swagger-ui.html")
-            || uri.startsWith("/uploads/");
-}
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
