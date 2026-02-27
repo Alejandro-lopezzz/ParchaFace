@@ -14,6 +14,7 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     @Override
+
 protected boolean shouldNotFilter(HttpServletRequest request) {
     String uri = request.getRequestURI();   // más confiable que getServletPath()
     String method = request.getMethod();
@@ -21,10 +22,31 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
     // Debug opcional
     System.out.println("[JwtFilter] " + method + " uri=" + uri);
 
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();   // más confiable que getServletPath()
+        String method = request.getMethod();
+
+        // Debug opcional
+        System.out.println("[JwtFilter] " + method + " uri=" + uri);
+ 
+
     if ("OPTIONS".equalsIgnoreCase(method)) return true;
+
 
     // evita loop de /error protegido
     if ("/error".equals(uri)) return true;
+
+        // evita loop de /error protegido
+        if ("/error".equals(uri)) return true;
+
+        return uri.startsWith("/auth/")
+                || uri.equals("/auth")
+                || uri.startsWith("/swagger-ui")
+                || uri.startsWith("/v3/api-docs")
+                || uri.equals("/swagger-ui.html")
+                || uri.startsWith("/uploads/");
+    }
+
 
     return uri.startsWith("/auth/")
             || uri.equals("/auth")
