@@ -48,6 +48,15 @@ public class EventoServiceImpl implements EventoService {
   }
 
   @Override
+  public List<Evento> getEventosPublicos() {
+    // Si no tienes filtros, devuelve todos por ahora:
+    return eventoRepository.findAll();
+
+    // Si tienes estado/publico, aquí se filtra:
+    // return eventoRepository.findByEventoPublicoTrue();
+  }
+
+  @Override
   public Evento saveEvento(Evento evento) {
     return eventoRepository.save(evento);
   }

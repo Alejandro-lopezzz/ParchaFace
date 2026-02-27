@@ -41,9 +41,9 @@ public class EventoController {
   // =========================
   // GET POR ID
   // =========================
-  @GetMapping("/{id}")
-  public Evento obtenerPorId(@PathVariable Integer id) {
-    return eventoService.getEventoById(id);
+  @GetMapping("/public")
+  public List<Evento> getPublic() {
+    return eventoService.getEventosPublicos(); // implementa este service
   }
 
   // =========================
