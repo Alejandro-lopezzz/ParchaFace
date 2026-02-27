@@ -14,25 +14,25 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String sp = request.getServletPath(); // ej: /auth/signin
-        String method = request.getMethod();
+protected boolean shouldNotFilter(HttpServletRequest request) {
+    String uri = request.getRequestURI();   // más confiable que getServletPath()
+    String method = request.getMethod();
 
-        // Debug
-        System.out.println("[JwtFilter] " + method + " servletPath=" + sp + " uri=" + request.getRequestURI());
+    // Debug opcional
+    System.out.println("[JwtFilter] " + method + " uri=" + uri);
 
-        if ("OPTIONS".equalsIgnoreCase(method)) return true;
+    if ("OPTIONS".equalsIgnoreCase(method)) return true;
 
-        // IMPORTANTE: evita loop de /error protegido
-        if ("/error".equals(sp)) return true;
+    // evita loop de /error protegido
+    if ("/error".equals(uri)) return true;
 
-        return sp.startsWith("/auth/")
-                || sp.equals("/auth")
-                || sp.startsWith("/swagger-ui")
-                || sp.startsWith("/v3/api-docs")
-                || sp.equals("/swagger-ui.html");
-    }
-
+    return uri.startsWith("/auth/")
+            || uri.equals("/auth")
+            || uri.startsWith("/swagger-ui")
+            || uri.startsWith("/v3/api-docs")
+            || uri.equals("/swagger-ui.html")
+            || uri.startsWith("/uploads/");
+}
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
