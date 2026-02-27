@@ -21,6 +21,8 @@ public interface EventoService {
 
     List<Evento> getEventosPorEstado(EstadoEvento estadoEvento);
 
+    List<Evento> getEventosPublicos();
+
     // JSON (viejo)
     Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
 
@@ -29,4 +31,6 @@ public interface EventoService {
 
     // multipart/form-data con estado específico (para borradores)
     Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
+
+
 }
