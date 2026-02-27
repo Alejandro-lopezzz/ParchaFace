@@ -26,4 +26,7 @@ public interface EventoService {
 
     // multipart/form-data (nuevo)
     Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador);
+
+    // multipart/form-data con estado específico (para borradores)
+    Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
 }

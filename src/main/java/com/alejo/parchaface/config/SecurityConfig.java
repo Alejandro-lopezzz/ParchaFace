@@ -21,71 +21,96 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public JwtFilter jwtFilter() {
-        return new JwtFilter();
-    }
+  @Bean
+  public JwtFilter jwtFilter() {
+    return new JwtFilter();
+  }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowCredentials(true);
+    config.setAllowedOriginPatterns(List.of(
+            "http://localhost:4200",
+            "http://127.0.0.1:4200",
+            "*"
+    ));
+    config.setAllowedHeaders(List.of("*"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+  }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
+    http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
 
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")
-                        )
-                        .accessDeniedHandler((request, response, accessDeniedException) ->
-                                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Prohibido")
-                        )
-                )
+            .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((request, response, authException) ->
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")
+                    )
+                    .accessDeniedHandler((request, response, accessDeniedException) ->
+                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Prohibido")
+                    )
+            )
 
-                .authorizeHttpRequests(auth -> auth
-                        // Preflight
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            .authorizeHttpRequests(auth -> auth
+                    // Preflight
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Importante para evitar loops
-                        .requestMatchers("/error").permitAll()
+                    // Importante para evitar loops
+                    .requestMatchers("/error").permitAll()
 
-                        // ✅ Públicos: Swagger + Auth (incluye forgot/reset)
-                        .requestMatchers(
-                                "/auth/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                    // ✅ Servir uploads públicamente (IMÁGENES)
+                    .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
 
-                        // Todo lo demás requiere JWT
-                        .anyRequest().authenticated()
-                )
+                    // ✅ Públicos: Swagger + Auth
+                    .requestMatchers(
+                            "/auth/**",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
+                            "/swagger-ui.html"
+                    ).permitAll()
 
-                // Filtro JWT
-                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+                    // ✅ Públicos: Eventos
+                    .requestMatchers(HttpMethod.GET, "/eventos").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/eventos/*").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/eventos/public").permitAll()
 
-        return http.build();
-    }
+                    // ✅ CLIMA (PÚBLICO)
+                    .requestMatchers(HttpMethod.GET, "/api/clima").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/clima/ciudades").permitAll()
 
-    @PostConstruct
-    public void loaded() {
-        System.out.println(">>> SecurityConfig LOADED");
-    }
+                    // ✅ Places (PÚBLICO)
+                    .requestMatchers(HttpMethod.GET, "/api/places").permitAll()
+
+                    // ✅ Comentarios de eventos
+                    .requestMatchers(HttpMethod.GET, "/api/eventos/*/comentarios").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/eventos/*/comentarios").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/api/comentarios/*").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/api/comentarios/*").authenticated()
+
+                    // Todo lo demás requiere JWT
+                    .anyRequest().authenticated()
+            )
+
+            // Filtro JWT
+            .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+  }
+
+  @PostConstruct
+  public void loaded() {
+    System.out.println(">>> SecurityConfig LOADED");
+  }
 }
