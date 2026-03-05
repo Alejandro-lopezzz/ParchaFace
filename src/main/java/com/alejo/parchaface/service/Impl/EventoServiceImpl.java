@@ -10,6 +10,12 @@ import com.alejo.parchaface.service.EventoService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import com.alejo.parchaface.model.Inscripcion;
+import com.alejo.parchaface.repository.InscripcionRepository;
+import com.alejo.parchaface.service.NotificacionService;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -23,6 +29,10 @@ public class EventoServiceImpl implements EventoService {
 
   private final EventoRepository eventoRepository;
 
+  private final InscripcionRepository inscripcionRepository;
+
+  private final NotificacionService notificacionService;
+
   // ✅ Valor fijo para cumplir NOT NULL cuando el evento es en línea
   private static final String LUGAR_EN_LINEA = "EN LINEA";
 
@@ -32,8 +42,12 @@ public class EventoServiceImpl implements EventoService {
   // URL pública (depende del WebConfig ResourceHandler)
   private static final String PUBLIC_URL_PREFIX = "/uploads/eventos/";
 
-  public EventoServiceImpl(EventoRepository eventoRepository) {
+  public EventoServiceImpl(EventoRepository eventoRepository,
+                           InscripcionRepository inscripcionRepository,
+                           NotificacionService notificacionService) {
     this.eventoRepository = eventoRepository;
+    this.inscripcionRepository = inscripcionRepository;
+    this.notificacionService = notificacionService;
   }
 
   @Override
@@ -369,4 +383,78 @@ public class EventoServiceImpl implements EventoService {
   }
 
   private record SavedImage(String publicUrl, String contentType) {}
+
+  @Override
+  @Transactional
+  public Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios) {
+
+    Evento existente = eventoRepository.findById(idEvento)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+    // ✅ Detecta cambio clave comparando CAMBIOS vs EXISTENTE (antes de guardar)
+    boolean cambioClave =
+            (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
+                    (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
+                    (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
+
+    // ✅ Aplicar cambios PERO sin pisar con null (esto evita que Swagger borre campos)
+    if (cambios.getTitulo() != null) existente.setTitulo(cambios.getTitulo());
+    if (cambios.getDescripcion() != null) existente.setDescripcion(cambios.getDescripcion());
+    if (cambios.getCategoria() != null) existente.setCategoria(cambios.getCategoria());
+
+    if (cambios.getFecha() != null) existente.setFecha(cambios.getFecha());
+    if (cambios.getHoraInicio() != null) existente.setHoraInicio(cambios.getHoraInicio());
+    if (cambios.getHoraFin() != null) existente.setHoraFin(cambios.getHoraFin());
+
+    if (cambios.getEventoEnLinea() != null) existente.setEventoEnLinea(cambios.getEventoEnLinea());
+    if (cambios.getUrlVirtual() != null) existente.setUrlVirtual(cambios.getUrlVirtual());
+    if (cambios.getUbicacion() != null) existente.setUbicacion(cambios.getUbicacion());
+    if (cambios.getNombreLugar() != null) existente.setNombreLugar(cambios.getNombreLugar());
+    if (cambios.getDireccionCompleta() != null) existente.setDireccionCompleta(cambios.getDireccionCompleta());
+    if (cambios.getCiudad() != null) existente.setCiudad(cambios.getCiudad());
+
+    if (cambios.getCupo() != null) existente.setCupo(cambios.getCupo());
+    if (cambios.getEventoGratuito() != null) existente.setEventoGratuito(cambios.getEventoGratuito());
+    if (cambios.getPrecio() != null) existente.setPrecio(cambios.getPrecio());
+
+    if (cambios.getEmailContacto() != null) existente.setEmailContacto(cambios.getEmailContacto());
+    if (cambios.getTelefonoContacto() != null) existente.setTelefonoContacto(cambios.getTelefonoContacto());
+    if (cambios.getSitioWeb() != null) existente.setSitioWeb(cambios.getSitioWeb());
+
+    if (cambios.getEventoPublico() != null) existente.setEventoPublico(cambios.getEventoPublico());
+    if (cambios.getDetallePrivado() != null) existente.setDetallePrivado(cambios.getDetallePrivado());
+
+    if (cambios.getPermitirComentarios() != null) existente.setPermitirComentarios(cambios.getPermitirComentarios());
+    if (cambios.getRecordatoriosAutomaticos() != null) existente.setRecordatoriosAutomaticos(cambios.getRecordatoriosAutomaticos());
+
+    Evento actualizado = eventoRepository.save(existente);
+
+    // ✅ Notificar inscritos SOLO si cambio clave
+    if (cambioClave) {
+      List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
+      for (Inscripcion ins : inscripciones) {
+        notificacionService.crearNotificacion(ins.getUsuario(),
+                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios.");
+      }
+    }
+
+    return actualizado;
+  }
+
+  @Override
+  @Transactional
+  public void eliminarEventoYNotificar(Integer idEvento) {
+
+    Evento evento = eventoRepository.findById(idEvento)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+    List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(idEvento);
+
+    for (Inscripcion ins : inscripciones) {
+      notificacionService.crearNotificacion(ins.getUsuario(),
+              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.");
+    }
+
+    eventoRepository.delete(evento);
+  }
 }

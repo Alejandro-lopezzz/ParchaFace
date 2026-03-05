@@ -121,36 +121,7 @@ public class EventoController {
       }
     }
 
-    existente.setTitulo(cambios.getTitulo());
-    existente.setDescripcion(cambios.getDescripcion());
-    existente.setCategoria(cambios.getCategoria());
-
-    existente.setFecha(cambios.getFecha());
-    existente.setHoraInicio(cambios.getHoraInicio());
-    existente.setHoraFin(cambios.getHoraFin());
-
-    existente.setEventoEnLinea(cambios.getEventoEnLinea());
-    existente.setUrlVirtual(cambios.getUrlVirtual());
-    existente.setUbicacion(cambios.getUbicacion());
-    existente.setNombreLugar(cambios.getNombreLugar());
-    existente.setDireccionCompleta(cambios.getDireccionCompleta());
-    existente.setCiudad(cambios.getCiudad());
-
-    existente.setCupo(cambios.getCupo());
-    existente.setEventoGratuito(cambios.getEventoGratuito());
-    existente.setPrecio(cambios.getPrecio());
-
-    existente.setEmailContacto(cambios.getEmailContacto());
-    existente.setTelefonoContacto(cambios.getTelefonoContacto());
-    existente.setSitioWeb(cambios.getSitioWeb());
-
-    existente.setEventoPublico(cambios.getEventoPublico());
-    existente.setDetallePrivado(cambios.getDetallePrivado());
-
-    existente.setPermitirComentarios(cambios.getPermitirComentarios());
-    existente.setRecordatoriosAutomaticos(cambios.getRecordatoriosAutomaticos());
-
-    return eventoService.saveEvento(existente);
+    return eventoService.actualizarEventoYNotificar(id, cambios);
   }
 
   // =========================
@@ -179,7 +150,7 @@ public class EventoController {
       }
     }
 
-    eventoService.deleteEvento(id);
+    eventoService.eliminarEventoYNotificar(id);
     return ResponseEntity.noContent().build();
   }
 

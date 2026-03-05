@@ -1,5 +1,6 @@
 package com.alejo.parchaface.service.Impl;
 
+import com.alejo.parchaface.service.NotificacionService;
 import com.alejo.parchaface.model.Evento;
 import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.model.Usuario;
@@ -29,6 +30,9 @@ public class InscripcionServiceImpl implements InscripcionService {
 
     @Autowired
     private EventoRepository eventoRepository;
+
+    @Autowired
+    private NotificacionService notificacionService;
 
     @Override
     public List<Inscripcion> getAllInscripciones() {
@@ -107,6 +111,11 @@ public class InscripcionServiceImpl implements InscripcionService {
         ins.setFechaInscripcion(LocalDate.now());
         ins.setEstadoInscripcion(EstadoInscripcion.vigente);
 
-        return inscripcionRepository.save(ins);
+        Inscripcion guardada = inscripcionRepository.save(ins);
+
+        notificacionService.crearNotificacion(usuario,
+                "Te inscribiste al evento: " + evento.getTitulo());
+
+        return guardada;
     }
 }
