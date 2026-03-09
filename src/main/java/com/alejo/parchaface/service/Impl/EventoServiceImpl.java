@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+// ✅ NUEVO
+import com.alejo.parchaface.repository.EventoCommentRepository;
+
 @Service
 public class EventoServiceImpl implements EventoService {
 
@@ -32,6 +35,9 @@ public class EventoServiceImpl implements EventoService {
   private final InscripcionRepository inscripcionRepository;
 
   private final NotificacionService notificacionService;
+
+  // ✅ NUEVO: para borrar comentarios antes de borrar el evento
+  private final EventoCommentRepository eventoCommentRepository;
 
   // ✅ Valor fijo para cumplir NOT NULL cuando el evento es en línea
   private static final String LUGAR_EN_LINEA = "EN LINEA";
@@ -44,10 +50,12 @@ public class EventoServiceImpl implements EventoService {
 
   public EventoServiceImpl(EventoRepository eventoRepository,
                            InscripcionRepository inscripcionRepository,
-                           NotificacionService notificacionService) {
+                           NotificacionService notificacionService,
+                           EventoCommentRepository eventoCommentRepository) {
     this.eventoRepository = eventoRepository;
     this.inscripcionRepository = inscripcionRepository;
     this.notificacionService = notificacionService;
+    this.eventoCommentRepository = eventoCommentRepository;
   }
 
   @Override
@@ -67,7 +75,16 @@ public class EventoServiceImpl implements EventoService {
   }
 
   @Override
+  @Transactional
   public void deleteEvento(Integer id) {
+
+    // ✅ 1) borrar comentarios del evento (evita FK constraint)
+    eventoCommentRepository.deleteByEvento_IdEvento(id);
+
+    // (Opcional) Si algún día te sale FK con inscripciones, descomenta:
+    // inscripcionRepository.deleteByEvento_IdEvento(id);
+
+    // ✅ 2) borrar evento
     eventoRepository.deleteById(id);
   }
 
@@ -335,16 +352,16 @@ public class EventoServiceImpl implements EventoService {
       String contentType = (file.getContentType() == null) ? "" : file.getContentType().toLowerCase().trim();
 
       boolean ok = contentType.equals("image/jpeg")
-        || contentType.equals("image/jpg")
-        || contentType.equals("image/png")
-        || contentType.equals("image/webp");
+              || contentType.equals("image/jpg")
+              || contentType.equals("image/png")
+              || contentType.equals("image/webp");
 
       if (!ok) {
         throw new IllegalArgumentException("Tipo de imagen no permitido: " + contentType);
       }
 
       String originalName = StringUtils.cleanPath(
-        file.getOriginalFilename() == null ? "" : file.getOriginalFilename()
+              file.getOriginalFilename() == null ? "" : file.getOriginalFilename()
       );
 
       String ext = getExtension(originalName);
@@ -391,13 +408,11 @@ public class EventoServiceImpl implements EventoService {
     Evento existente = eventoRepository.findById(idEvento)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
-    // ✅ Detecta cambio clave comparando CAMBIOS vs EXISTENTE (antes de guardar)
     boolean cambioClave =
             (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
                     (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
                     (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
 
-    // ✅ Aplicar cambios PERO sin pisar con null (esto evita que Swagger borre campos)
     if (cambios.getTitulo() != null) existente.setTitulo(cambios.getTitulo());
     if (cambios.getDescripcion() != null) existente.setDescripcion(cambios.getDescripcion());
     if (cambios.getCategoria() != null) existente.setCategoria(cambios.getCategoria());
@@ -429,7 +444,6 @@ public class EventoServiceImpl implements EventoService {
 
     Evento actualizado = eventoRepository.save(existente);
 
-    // ✅ Notificar inscritos SOLO si cambio clave
     if (cambioClave) {
       List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
       for (Inscripcion ins : inscripciones) {
@@ -454,6 +468,9 @@ public class EventoServiceImpl implements EventoService {
       notificacionService.crearNotificacion(ins.getUsuario(),
               "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.");
     }
+
+    // ✅ IMPORTANTE: borrar comentarios antes de borrar el evento (evita FK)
+    eventoCommentRepository.deleteByEvento_IdEvento(idEvento);
 
     eventoRepository.delete(evento);
   }

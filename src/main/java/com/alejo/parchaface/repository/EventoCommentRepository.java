@@ -12,4 +12,6 @@ public interface EventoCommentRepository extends JpaRepository<EventoComment, In
     Page<EventoComment> findByEvento_IdEventoOrderByCreatedAtDesc(Integer eventoId, Pageable pageable);
 
     Optional<EventoComment> findByIdEventoCommentAndUsuario_IdUsuario(Integer commentId, Integer usuarioId);
+
+    void deleteByEvento_IdEvento(Integer eventoId);
 }
