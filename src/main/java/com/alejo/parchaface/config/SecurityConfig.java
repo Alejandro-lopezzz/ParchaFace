@@ -90,9 +90,6 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/clima").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/clima/ciudades").permitAll()
 
-                    // ✅ Places (PÚBLICO)
-                    .requestMatchers(HttpMethod.GET, "/api/places").permitAll()
-
                     // ✅ Comentarios de eventos
                     .requestMatchers(HttpMethod.GET, "/api/eventos/*/comentarios").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/eventos/*/comentarios").authenticated()
