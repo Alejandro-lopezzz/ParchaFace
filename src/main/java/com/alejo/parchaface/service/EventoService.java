@@ -29,4 +29,8 @@ public interface EventoService {
 
     // multipart/form-data con estado específico (para borradores)
     Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
+
+    Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+
+    void eliminarEventoYNotificar(Integer idEvento);
 }

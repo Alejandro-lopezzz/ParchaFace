@@ -1,10 +1,10 @@
 package com.alejo.parchaface.controller;
 
 import com.alejo.parchaface.model.Notificacion;
-import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.service.NotificacionService;
-import com.alejo.parchaface.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,47 +16,38 @@ public class NotificacionController {
     @Autowired
     private NotificacionService notificacionService;
 
-    @Autowired
-    private UsuarioService usuarioService; // Para obtener usuario por ID
-
-    // Obtener todas las notificaciones
+    // ✅ Mis notificaciones (todas)
     @GetMapping
-    public List<Notificacion> obtenerTodas() {
-        return notificacionService.obtenerTodas();
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public List<Notificacion> misNotificaciones(Authentication auth) {
+        return notificacionService.obtenerMisNotificaciones(auth.getName());
     }
 
-    // Obtener notificación por ID
-    @GetMapping("/{id}")
-    public Notificacion obtenerPorId(@PathVariable int id) {
-        return notificacionService.obtenerNotificacionPorId(id);
+    // ✅ Mis notificaciones no leídas
+    @GetMapping("/no-leidas")
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public List<Notificacion> noLeidas(Authentication auth) {
+        return notificacionService.obtenerNoLeidas(auth.getName());
     }
 
-    // Obtener notificaciones de un usuario específico
-    @GetMapping("/usuario/{idUsuario}")
-    public List<Notificacion> obtenerPorUsuario(@PathVariable int idUsuario) {
-        Usuario usuario = usuarioService.getUsuarioById(idUsuario);
-        if (usuario == null) {
-            return List.of(); // Retorna lista vacía si no existe el usuario
-        }
-        return notificacionService.obtenerPorUsuario(usuario);
+    // ✅ Contador de no leídas
+    @GetMapping("/contador-no-leidas")
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public long contadorNoLeidas(Authentication auth) {
+        return notificacionService.contadorNoLeidas(auth.getName());
     }
 
-    // Crear nueva notificación
-    @PostMapping
-    public Notificacion guardar(@RequestBody Notificacion notificacion) {
-        return notificacionService.guardarNotificacion(notificacion);
+    // ✅ Marcar UNA como leída
+    @PutMapping("/{id}/leer")
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public Notificacion marcarLeida(@PathVariable Integer id, Authentication auth) {
+        return notificacionService.marcarLeida(id, auth.getName());
     }
 
-    // Actualizar notificación existente
-    @PutMapping("/{id}")
-    public Notificacion actualizar(@PathVariable int id, @RequestBody Notificacion notificacion) {
-        notificacion.setId_notificacion(id);
-        return notificacionService.actualizarNotificacion(notificacion);
-    }
-
-    // Eliminar notificación por ID
-    @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable int id) {
-        notificacionService.eliminarNotificacion(id);
+    // ✅ Marcar TODAS como leídas
+    @PutMapping("/leer-todas")
+    @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
+    public void leerTodas(Authentication auth) {
+        notificacionService.marcarTodasLeidas(auth.getName());
     }
 }

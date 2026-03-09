@@ -18,13 +18,13 @@ public class Notificacion {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String mensaje;
 
-    @Column(nullable = false)
-    private LocalDateTime fecha_envio = LocalDateTime.now();
+    // ✅ IMPORTANTE: en Java camelCase, en BD snake_case
+    @Column(name = "fecha_envio", nullable = false)
+    private LocalDateTime fechaEnvio = LocalDateTime.now();
 
     @Column(nullable = false)
     private Boolean leido = false;
 
-    // Getters y setters
     public Integer getId_notificacion() { return id_notificacion; }
     public void setId_notificacion(Integer id_notificacion) { this.id_notificacion = id_notificacion; }
 
@@ -34,8 +34,8 @@ public class Notificacion {
     public String getMensaje() { return mensaje; }
     public void setMensaje(String mensaje) { this.mensaje = mensaje; }
 
-    public LocalDateTime getFecha_envio() { return fecha_envio; }
-    public void setFecha_envio(LocalDateTime fecha_envio) { this.fecha_envio = fecha_envio; }
+    public LocalDateTime getFechaEnvio() { return fechaEnvio; }
+    public void setFechaEnvio(LocalDateTime fechaEnvio) { this.fechaEnvio = fechaEnvio; }
 
     public Boolean getLeido() { return leido; }
     public void setLeido(Boolean leido) { this.leido = leido; }
