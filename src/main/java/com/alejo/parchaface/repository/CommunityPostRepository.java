@@ -3,4 +3,8 @@ package com.alejo.parchaface.repository;
 import com.alejo.parchaface.model.CommunityPost;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface CommunityPostRepository extends JpaRepository<CommunityPost, Integer> { }
+import java.util.List;
+
+public interface CommunityPostRepository extends JpaRepository<CommunityPost, Integer> {
+  List<CommunityPost> findByAuthorCorreoOrderByCreatedAtDesc(String authorCorreo);
+}
