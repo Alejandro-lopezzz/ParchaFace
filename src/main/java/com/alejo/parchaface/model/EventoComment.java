@@ -37,6 +37,9 @@ public class EventoComment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "imagen_url", length = 500)
+    private String imagenUrl;
+
     public Integer getIdEventoComment() { return idEventoComment; }
 
     public Evento getEvento() { return evento; }
@@ -50,4 +53,7 @@ public class EventoComment {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public String getImagenUrl() { return imagenUrl; }
+    public void setImagenUrl(String imagenUrl) { this.imagenUrl = imagenUrl; }
 }

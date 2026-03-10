@@ -6,9 +6,11 @@ import com.alejo.parchaface.dto.UpdateEventoCommentRequest;
 import com.alejo.parchaface.service.EventoCommentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api")
@@ -31,14 +33,16 @@ public class EventoCommentController {
     }
 
     // ✅ Crear comentario (requiere login)
-    @PostMapping("/eventos/{eventoId}/comentarios")
+    @PostMapping(value = "/eventos/{eventoId}/comentarios", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EventoCommentResponse> crear(
             @PathVariable Integer eventoId,
-            @Valid @RequestBody CreateEventoCommentRequest request,
+            @RequestPart(value = "contenido", required = false) String contenido,
+            @RequestPart(value = "imagen", required = false) MultipartFile imagen,
             Authentication auth
     ) {
-        String correo = auth.getName(); // normalmente tu JWT setea el correo como principal
-        return ResponseEntity.ok(service.crear(eventoId, request, correo));
+        String correo = auth.getName();
+        CreateEventoCommentRequest request = new CreateEventoCommentRequest(contenido);
+        return ResponseEntity.ok(service.crear(eventoId, request, imagen, correo));
     }
 
     // ✅ Editar comentario (solo el dueño)

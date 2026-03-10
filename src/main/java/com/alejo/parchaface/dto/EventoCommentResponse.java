@@ -8,5 +8,6 @@ public record EventoCommentResponse(
         Integer usuarioId,
         String nombreUsuario,
         String contenido,
+        String imagenUrl,
         LocalDateTime createdAt
 ) {}
