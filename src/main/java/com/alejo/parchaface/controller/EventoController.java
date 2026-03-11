@@ -2,6 +2,7 @@ package com.alejo.parchaface.controller;
 
 import com.alejo.parchaface.dto.CrearEventoDTO;
 import com.alejo.parchaface.dto.CrearEventoForm;
+import com.alejo.parchaface.dto.EventoMapaDTO;
 import com.alejo.parchaface.model.Evento;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/eventos")
@@ -43,7 +45,37 @@ public class EventoController {
   // =========================
   @GetMapping("/{id}")
   public Evento obtenerPorId(@PathVariable Integer id) {
-    return eventoService.getEventoById(id);
+    Evento evento = eventoService.getEventoById(id);
+    if (evento == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
+    }
+    return evento;
+  }
+
+  // =========================
+  // GET EVENTOS PUBLICOS PARA MAPA
+  // =========================
+  @GetMapping("/public")
+  public List<EventoMapaDTO> obtenerEventosPublicosParaMapa() {
+    return eventoService.getAllEventos()
+            .stream()
+            .filter(evento -> Boolean.TRUE.equals(evento.getEventoPublico()))
+            .filter(evento -> Boolean.FALSE.equals(evento.getEventoEnLinea()))
+            .filter(evento -> evento.getLatitud() != null && evento.getLongitud() != null)
+            .filter(evento -> evento.getEstadoEvento() != null
+                    && "activo".equalsIgnoreCase(String.valueOf(evento.getEstadoEvento())))
+            .map(evento -> new EventoMapaDTO(
+                    evento.getIdEvento(),
+                    evento.getTitulo(),
+                    evento.getCategoria(),
+                    evento.getFecha(),
+                    evento.getCiudad(),
+                    evento.getNombreLugar(),
+                    evento.getImagenPortadaUrl(),
+                    evento.getLatitud(),
+                    evento.getLongitud()
+            ))
+            .toList();
   }
 
   // =========================
@@ -52,8 +84,8 @@ public class EventoController {
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
   public ResponseEntity<Evento> crearEventoJson(
-    @Valid @RequestBody CrearEventoDTO dto,
-    Authentication authentication
+          @Valid @RequestBody CrearEventoDTO dto,
+          Authentication authentication
   ) {
     Usuario organizador = getOrganizador(authentication);
     Evento evento = eventoService.crearEvento(dto, organizador);
@@ -61,17 +93,16 @@ public class EventoController {
   }
 
   // =========================
-  // POST CREAR — MULTIPART/FORM-DATA (nuevo, con archivo real)
+  // POST CREAR — MULTIPART/FORM-DATA
   // =========================
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
   public ResponseEntity<Evento> crearEventoForm(
-    @Valid @ModelAttribute CrearEventoForm form,
-    Authentication authentication
+          @Valid @ModelAttribute CrearEventoForm form,
+          Authentication authentication
   ) {
     Usuario organizador = getOrganizador(authentication);
-    var imagen = form.getImagenPortada();
-    Evento evento = eventoService.crearEvento(form, imagen, organizador);
+    Evento evento = eventoService.crearEvento(form, form.getImagenPortada(), organizador);
     return ResponseEntity.status(HttpStatus.CREATED).body(evento);
   }
 
@@ -81,15 +112,22 @@ public class EventoController {
   @PostMapping(path = "/borrador", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
   public ResponseEntity<Evento> guardarBorrador(
-    @Valid @ModelAttribute CrearEventoForm form,
-    Authentication authentication
+          @Valid @ModelAttribute CrearEventoForm form,
+          Authentication authentication
   ) {
     Usuario organizador = getOrganizador(authentication);
-    var imagen = form.getImagenPortada();
-    Evento evento = eventoService.crearEvento(form, imagen, organizador, EstadoEvento.borrador);
+    Evento evento = eventoService.crearEvento(
+            form,
+            form.getImagenPortada(),
+            organizador,
+            EstadoEvento.borrador
+    );
     return ResponseEntity.status(HttpStatus.CREATED).body(evento);
   }
 
+  // =========================
+  // GET POR ESTADO
+  // =========================
   @GetMapping("/estado/{estado}")
   public List<Evento> obtenerPorEstado(@PathVariable EstadoEvento estado) {
     return eventoService.getEventosPorEstado(estado);
@@ -100,15 +138,18 @@ public class EventoController {
   // =========================
   @PutMapping("/{id}")
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
-  public Evento actualizar(@PathVariable Integer id, @RequestBody Evento cambios, Authentication authentication) {
-
+  public Evento actualizar(
+          @PathVariable Integer id,
+          @RequestBody Evento cambios,
+          Authentication authentication
+  ) {
     Evento existente = eventoService.getEventoById(id);
     if (existente == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
     }
 
     boolean esAdmin = authentication.getAuthorities().stream()
-      .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
+            .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
 
     String correoActual = authentication.getName();
 
@@ -130,14 +171,13 @@ public class EventoController {
   @DeleteMapping("/{id}")
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
   public ResponseEntity<Void> eliminar(@PathVariable Integer id, Authentication authentication) {
-
     Evento existente = eventoService.getEventoById(id);
     if (existente == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
     }
 
     boolean esAdmin = authentication.getAuthorities().stream()
-      .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
+            .anyMatch(a -> a.getAuthority().equals("ADMINISTRADOR"));
 
     String correoActual = authentication.getName();
 
@@ -161,7 +201,14 @@ public class EventoController {
     if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
     }
+
     String correo = authentication.getName();
-    return usuarioService.getUsuarioPorCorreo(correo);
+    Usuario usuario = usuarioService.getUsuarioPorCorreo(correo);
+
+    if (usuario == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado");
+    }
+
+    return usuario;
   }
 }
