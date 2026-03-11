@@ -3,55 +3,54 @@ package com.alejo.parchaface.service.Impl;
 import com.alejo.parchaface.dto.CrearEventoDTO;
 import com.alejo.parchaface.dto.CrearEventoForm;
 import com.alejo.parchaface.model.Evento;
+import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
+import com.alejo.parchaface.repository.EventoCommentRepository;
 import com.alejo.parchaface.repository.EventoRepository;
-import com.alejo.parchaface.service.EventoService;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
-import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.repository.InscripcionRepository;
+import com.alejo.parchaface.service.EventoService;
 import com.alejo.parchaface.service.NotificacionService;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// ✅ NUEVO
-import com.alejo.parchaface.repository.EventoCommentRepository;
-
 @Service
 public class EventoServiceImpl implements EventoService {
 
   private final EventoRepository eventoRepository;
-
   private final InscripcionRepository inscripcionRepository;
-
   private final NotificacionService notificacionService;
-
-  // ✅ NUEVO: para borrar comentarios antes de borrar el evento
   private final EventoCommentRepository eventoCommentRepository;
 
-  // ✅ Valor fijo para cumplir NOT NULL cuando el evento es en línea
+  // Valor fijo para cumplir NOT NULL cuando el evento es en línea
   private static final String LUGAR_EN_LINEA = "EN LINEA";
 
-  // Carpeta física donde se guardan las portadas (relativa al root del proyecto)
+  // Carpeta física donde se guardan las portadas
   private static final Path UPLOAD_DIR = Paths.get("uploads", "eventos");
 
-  // URL pública (depende del WebConfig ResourceHandler)
+  // URL pública
   private static final String PUBLIC_URL_PREFIX = "/uploads/eventos/";
 
-  public EventoServiceImpl(EventoRepository eventoRepository,
-                           InscripcionRepository inscripcionRepository,
-                           NotificacionService notificacionService,
-                           EventoCommentRepository eventoCommentRepository) {
+  public EventoServiceImpl(
+          EventoRepository eventoRepository,
+          InscripcionRepository inscripcionRepository,
+          NotificacionService notificacionService,
+          EventoCommentRepository eventoCommentRepository
+  ) {
     this.eventoRepository = eventoRepository;
     this.inscripcionRepository = inscripcionRepository;
     this.notificacionService = notificacionService;
@@ -77,14 +76,7 @@ public class EventoServiceImpl implements EventoService {
   @Override
   @Transactional
   public void deleteEvento(Integer id) {
-
-    // ✅ 1) borrar comentarios del evento (evita FK constraint)
     eventoCommentRepository.deleteByEvento_IdEvento(id);
-
-    // (Opcional) Si algún día te sale FK con inscripciones, descomenta:
-    // inscripcionRepository.deleteByEvento_IdEvento(id);
-
-    // ✅ 2) borrar evento
     eventoRepository.deleteById(id);
   }
 
@@ -98,7 +90,6 @@ public class EventoServiceImpl implements EventoService {
   // =========================
   @Override
   public Evento crearEvento(CrearEventoDTO dto, Usuario organizador) {
-
     Evento evento = new Evento();
 
     // Básicos
@@ -106,7 +97,7 @@ public class EventoServiceImpl implements EventoService {
     evento.setDescripcion(dto.getDescripcion());
     evento.setCategoria(dto.getCategoria());
 
-    // Imagen (en este flujo sigue siendo URL + contentType)
+    // Imagen (flujo DTO viejo)
     evento.setImagenPortadaUrl(dto.getImagenPortadaUrl());
     evento.setImagenPortadaContentType(dto.getImagenPortadaContentType());
 
@@ -121,21 +112,25 @@ public class EventoServiceImpl implements EventoService {
 
     if (enLinea) {
       evento.setUrlVirtual(dto.getUrlVirtual());
-
-      // ✅ FIX: NO dejar lugar/ubicación en null (DB: Column 'lugar' NOT NULL)
       evento.setUbicacion(LUGAR_EN_LINEA);
-
       evento.setNombreLugar(null);
       evento.setDireccionCompleta(null);
       evento.setCiudad(null);
+
+      // Coordenadas no aplican para evento en línea
+      evento.setLatitud(null);
+      evento.setLongitud(null);
     } else {
       evento.setUrlVirtual(null);
-
-      // Presencial
       evento.setUbicacion(dto.getUbicacion());
       evento.setNombreLugar(dto.getNombreLugar());
       evento.setDireccionCompleta(dto.getDireccionCompleta());
       evento.setCiudad(dto.getCiudad());
+
+      // OJO:
+      // Esto solo compila si también agregas latitud/longitud al CrearEventoDTO
+      evento.setLatitud(dto.getLatitud());
+      evento.setLongitud(dto.getLongitud());
     }
 
     // Cupo / Precio
@@ -171,7 +166,6 @@ public class EventoServiceImpl implements EventoService {
   // =========================
   @Override
   public Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador) {
-
     Evento evento = new Evento();
 
     // Básicos
@@ -190,21 +184,20 @@ public class EventoServiceImpl implements EventoService {
 
     if (enLinea) {
       evento.setUrlVirtual(form.getUrlVirtual());
-
-      // ✅ FIX: NO dejar lugar/ubicación en null (DB: Column 'lugar' NOT NULL)
       evento.setUbicacion(LUGAR_EN_LINEA);
-
       evento.setNombreLugar(null);
       evento.setDireccionCompleta(null);
       evento.setCiudad(null);
+      evento.setLatitud(null);
+      evento.setLongitud(null);
     } else {
       evento.setUrlVirtual(null);
-
-      // Presencial
       evento.setUbicacion(form.getUbicacion());
       evento.setNombreLugar(form.getNombreLugar());
       evento.setDireccionCompleta(form.getDireccionCompleta());
       evento.setCiudad(form.getCiudad());
+      evento.setLatitud(form.getLatitud());
+      evento.setLongitud(form.getLongitud());
     }
 
     // Cupo / Precio
@@ -228,14 +221,13 @@ public class EventoServiceImpl implements EventoService {
     evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
 
-    // ======================
-    // Imagen (archivo real)
-    // ======================
+    // Imagen
     MultipartFile file = imagenPortada;
     if (file == null) {
       try {
         file = form.getImagenPortada();
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+      }
     }
 
     if (file != null && !file.isEmpty()) {
@@ -255,11 +247,10 @@ public class EventoServiceImpl implements EventoService {
   }
 
   // =========================
-  // CREAR EVENTO — FORM-DATA con estado específico (borradores)
+  // CREAR EVENTO — FORM-DATA con estado específico
   // =========================
   @Override
   public Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado) {
-
     Evento evento = new Evento();
 
     // Básicos
@@ -278,21 +269,20 @@ public class EventoServiceImpl implements EventoService {
 
     if (enLinea) {
       evento.setUrlVirtual(form.getUrlVirtual());
-
-      // ✅ FIX: NO dejar lugar/ubicación en null (DB: Column 'lugar' NOT NULL)
       evento.setUbicacion(LUGAR_EN_LINEA);
-
       evento.setNombreLugar(null);
       evento.setDireccionCompleta(null);
       evento.setCiudad(null);
+      evento.setLatitud(null);
+      evento.setLongitud(null);
     } else {
       evento.setUrlVirtual(null);
-
-      // Presencial
       evento.setUbicacion(form.getUbicacion());
       evento.setNombreLugar(form.getNombreLugar());
       evento.setDireccionCompleta(form.getDireccionCompleta());
       evento.setCiudad(form.getCiudad());
+      evento.setLatitud(form.getLatitud());
+      evento.setLongitud(form.getLongitud());
     }
 
     // Cupo / Precio
@@ -316,14 +306,13 @@ public class EventoServiceImpl implements EventoService {
     evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
 
-    // ======================
-    // Imagen (archivo real)
-    // ======================
+    // Imagen
     MultipartFile file = imagenPortada;
     if (file == null) {
       try {
         file = form.getImagenPortada();
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+      }
     }
 
     if (file != null && !file.isEmpty()) {
@@ -349,7 +338,9 @@ public class EventoServiceImpl implements EventoService {
     try {
       Files.createDirectories(UPLOAD_DIR);
 
-      String contentType = (file.getContentType() == null) ? "" : file.getContentType().toLowerCase().trim();
+      String contentType = (file.getContentType() == null)
+              ? ""
+              : file.getContentType().toLowerCase().trim();
 
       boolean ok = contentType.equals("image/jpeg")
               || contentType.equals("image/jpg")
@@ -399,19 +390,19 @@ public class EventoServiceImpl implements EventoService {
     return filename.substring(dot + 1).trim().toLowerCase();
   }
 
-  private record SavedImage(String publicUrl, String contentType) {}
+  private record SavedImage(String publicUrl, String contentType) {
+  }
 
   @Override
   @Transactional
   public Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios) {
-
     Evento existente = eventoRepository.findById(idEvento)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
     boolean cambioClave =
-            (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
-                    (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
-                    (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
+            (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo()))
+                    || (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha()))
+                    || (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
 
     if (cambios.getTitulo() != null) existente.setTitulo(cambios.getTitulo());
     if (cambios.getDescripcion() != null) existente.setDescripcion(cambios.getDescripcion());
@@ -427,6 +418,8 @@ public class EventoServiceImpl implements EventoService {
     if (cambios.getNombreLugar() != null) existente.setNombreLugar(cambios.getNombreLugar());
     if (cambios.getDireccionCompleta() != null) existente.setDireccionCompleta(cambios.getDireccionCompleta());
     if (cambios.getCiudad() != null) existente.setCiudad(cambios.getCiudad());
+    if (cambios.getLatitud() != null) existente.setLatitud(cambios.getLatitud());
+    if (cambios.getLongitud() != null) existente.setLongitud(cambios.getLongitud());
 
     if (cambios.getCupo() != null) existente.setCupo(cambios.getCupo());
     if (cambios.getEventoGratuito() != null) existente.setEventoGratuito(cambios.getEventoGratuito());
@@ -447,8 +440,10 @@ public class EventoServiceImpl implements EventoService {
     if (cambioClave) {
       List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
       for (Inscripcion ins : inscripciones) {
-        notificacionService.crearNotificacion(ins.getUsuario(),
-                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios.");
+        notificacionService.crearNotificacion(
+                ins.getUsuario(),
+                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios."
+        );
       }
     }
 
@@ -458,20 +453,19 @@ public class EventoServiceImpl implements EventoService {
   @Override
   @Transactional
   public void eliminarEventoYNotificar(Integer idEvento) {
-
     Evento evento = eventoRepository.findById(idEvento)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
     List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(idEvento);
 
     for (Inscripcion ins : inscripciones) {
-      notificacionService.crearNotificacion(ins.getUsuario(),
-              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.");
+      notificacionService.crearNotificacion(
+              ins.getUsuario(),
+              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada."
+      );
     }
 
-    // ✅ IMPORTANTE: borrar comentarios antes de borrar el evento (evita FK)
     eventoCommentRepository.deleteByEvento_IdEvento(idEvento);
-
     eventoRepository.delete(evento);
   }
 }
