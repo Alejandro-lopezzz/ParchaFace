@@ -64,6 +64,10 @@ public class CrearEventoDTO {
     @Size(max = 120)
     private String ciudad;
 
+    private Double latitud;
+
+    private Double longitud;
+
     // ======================
     // Cupo / Precio
     // ======================
@@ -125,6 +129,30 @@ public class CrearEventoDTO {
         return true;
     }
 
+    @AssertTrue(message = "Si el evento NO es en línea, debes seleccionar una ubicación en el mapa")
+    public boolean isCoordenadasValidas() {
+        if (Boolean.FALSE.equals(eventoEnLinea)) {
+            return latitud != null && longitud != null;
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "La latitud debe estar entre -90 y 90")
+    public boolean isLatitudEnRango() {
+        if (latitud == null) {
+            return true;
+        }
+        return latitud >= -90 && latitud <= 90;
+    }
+
+    @AssertTrue(message = "La longitud debe estar entre -180 y 180")
+    public boolean isLongitudEnRango() {
+        if (longitud == null) {
+            return true;
+        }
+        return longitud >= -180 && longitud <= 180;
+    }
+
     @AssertTrue(message = "Si el evento NO es gratuito, debes enviar el precio")
     public boolean isPrecioValido() {
         if (Boolean.FALSE.equals(eventoGratuito)) {
@@ -141,13 +169,11 @@ public class CrearEventoDTO {
         return true;
     }
 
-    // ✅ ELIMINADA la validación rígida:
-    // @AssertTrue(message = "horaFin debe ser mayor que horaInicio")
-    // public boolean isRangoHoraValido() { ... }
-
     @AssertTrue(message = "La imagen de portada debe ser JPG (image/jpeg o image/jpg) si envías contentType")
     public boolean isImagenPortadaJpg() {
-        if (imagenPortadaContentType == null || imagenPortadaContentType.isBlank()) return true;
+        if (imagenPortadaContentType == null || imagenPortadaContentType.isBlank()) {
+            return true;
+        }
         String ct = imagenPortadaContentType.trim().toLowerCase();
         return ct.equals("image/jpeg") || ct.equals("image/jpg");
     }
@@ -156,75 +182,211 @@ public class CrearEventoDTO {
     // GETTERS / SETTERS
     // ======================
 
-    public String getTitulo() { return titulo; }
-    public void setTitulo(String titulo) { this.titulo = titulo; }
+    public String getTitulo() {
+        return titulo;
+    }
 
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
 
-    public String getCategoria() { return categoria; }
-    public void setCategoria(String categoria) { this.categoria = categoria; }
+    public String getDescripcion() {
+        return descripcion;
+    }
 
-    public String getImagenPortadaUrl() { return imagenPortadaUrl; }
-    public void setImagenPortadaUrl(String imagenPortadaUrl) { this.imagenPortadaUrl = imagenPortadaUrl; }
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
 
-    public String getImagenPortadaContentType() { return imagenPortadaContentType; }
-    public void setImagenPortadaContentType(String imagenPortadaContentType) { this.imagenPortadaContentType = imagenPortadaContentType; }
+    public String getCategoria() {
+        return categoria;
+    }
 
-    public LocalDate getFecha() { return fecha; }
-    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
 
-    public LocalTime getHoraInicio() { return horaInicio; }
-    public void setHoraInicio(LocalTime horaInicio) { this.horaInicio = horaInicio; }
+    public String getImagenPortadaUrl() {
+        return imagenPortadaUrl;
+    }
 
-    public LocalTime getHoraFin() { return horaFin; }
-    public void setHoraFin(LocalTime horaFin) { this.horaFin = horaFin; }
+    public void setImagenPortadaUrl(String imagenPortadaUrl) {
+        this.imagenPortadaUrl = imagenPortadaUrl;
+    }
 
-    public Boolean getEventoEnLinea() { return eventoEnLinea; }
-    public void setEventoEnLinea(Boolean eventoEnLinea) { this.eventoEnLinea = eventoEnLinea; }
+    public String getImagenPortadaContentType() {
+        return imagenPortadaContentType;
+    }
 
-    public String getUrlVirtual() { return urlVirtual; }
-    public void setUrlVirtual(String urlVirtual) { this.urlVirtual = urlVirtual; }
+    public void setImagenPortadaContentType(String imagenPortadaContentType) {
+        this.imagenPortadaContentType = imagenPortadaContentType;
+    }
 
-    public String getUbicacion() { return ubicacion; }
-    public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
+    public LocalDate getFecha() {
+        return fecha;
+    }
 
-    public String getNombreLugar() { return nombreLugar; }
-    public void setNombreLugar(String nombreLugar) { this.nombreLugar = nombreLugar; }
+    public void setFecha(LocalDate fecha) {
+        this.fecha = fecha;
+    }
 
-    public String getDireccionCompleta() { return direccionCompleta; }
-    public void setDireccionCompleta(String direccionCompleta) { this.direccionCompleta = direccionCompleta; }
+    public LocalTime getHoraInicio() {
+        return horaInicio;
+    }
 
-    public String getCiudad() { return ciudad; }
-    public void setCiudad(String ciudad) { this.ciudad = ciudad; }
+    public void setHoraInicio(LocalTime horaInicio) {
+        this.horaInicio = horaInicio;
+    }
 
-    public Integer getCupo() { return cupo; }
-    public void setCupo(Integer cupo) { this.cupo = cupo; }
+    public LocalTime getHoraFin() {
+        return horaFin;
+    }
 
-    public Boolean getEventoGratuito() { return eventoGratuito; }
-    public void setEventoGratuito(Boolean eventoGratuito) { this.eventoGratuito = eventoGratuito; }
+    public void setHoraFin(LocalTime horaFin) {
+        this.horaFin = horaFin;
+    }
 
-    public BigDecimal getPrecio() { return precio; }
-    public void setPrecio(BigDecimal precio) { this.precio = precio; }
+    public Boolean getEventoEnLinea() {
+        return eventoEnLinea;
+    }
 
-    public String getEmailContacto() { return emailContacto; }
-    public void setEmailContacto(String emailContacto) { this.emailContacto = emailContacto; }
+    public void setEventoEnLinea(Boolean eventoEnLinea) {
+        this.eventoEnLinea = eventoEnLinea;
+    }
 
-    public String getTelefonoContacto() { return telefonoContacto; }
-    public void setTelefonoContacto(String telefonoContacto) { this.telefonoContacto = telefonoContacto; }
+    public String getUrlVirtual() {
+        return urlVirtual;
+    }
 
-    public String getSitioWeb() { return sitioWeb; }
-    public void setSitioWeb(String sitioWeb) { this.sitioWeb = sitioWeb; }
+    public void setUrlVirtual(String urlVirtual) {
+        this.urlVirtual = urlVirtual;
+    }
 
-    public Boolean getEventoPublico() { return eventoPublico; }
-    public void setEventoPublico(Boolean eventoPublico) { this.eventoPublico = eventoPublico; }
+    public String getUbicacion() {
+        return ubicacion;
+    }
 
-    public String getDetallePrivado() { return detallePrivado; }
-    public void setDetallePrivado(String detallePrivado) { this.detallePrivado = detallePrivado; }
+    public void setUbicacion(String ubicacion) {
+        this.ubicacion = ubicacion;
+    }
 
-    public Boolean getPermitirComentarios() { return permitirComentarios; }
-    public void setPermitirComentarios(Boolean permitirComentarios) { this.permitirComentarios = permitirComentarios; }
+    public String getNombreLugar() {
+        return nombreLugar;
+    }
 
-    public Boolean getRecordatoriosAutomaticos() { return recordatoriosAutomaticos; }
-    public void setRecordatoriosAutomaticos(Boolean recordatoriosAutomaticos) { this.recordatoriosAutomaticos = recordatoriosAutomaticos; }
+    public void setNombreLugar(String nombreLugar) {
+        this.nombreLugar = nombreLugar;
+    }
+
+    public String getDireccionCompleta() {
+        return direccionCompleta;
+    }
+
+    public void setDireccionCompleta(String direccionCompleta) {
+        this.direccionCompleta = direccionCompleta;
+    }
+
+    public String getCiudad() {
+        return ciudad;
+    }
+
+    public void setCiudad(String ciudad) {
+        this.ciudad = ciudad;
+    }
+
+    public Double getLatitud() {
+        return latitud;
+    }
+
+    public void setLatitud(Double latitud) {
+        this.latitud = latitud;
+    }
+
+    public Double getLongitud() {
+        return longitud;
+    }
+
+    public void setLongitud(Double longitud) {
+        this.longitud = longitud;
+    }
+
+    public Integer getCupo() {
+        return cupo;
+    }
+
+    public void setCupo(Integer cupo) {
+        this.cupo = cupo;
+    }
+
+    public Boolean getEventoGratuito() {
+        return eventoGratuito;
+    }
+
+    public void setEventoGratuito(Boolean eventoGratuito) {
+        this.eventoGratuito = eventoGratuito;
+    }
+
+    public BigDecimal getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(BigDecimal precio) {
+        this.precio = precio;
+    }
+
+    public String getEmailContacto() {
+        return emailContacto;
+    }
+
+    public void setEmailContacto(String emailContacto) {
+        this.emailContacto = emailContacto;
+    }
+
+    public String getTelefonoContacto() {
+        return telefonoContacto;
+    }
+
+    public void setTelefonoContacto(String telefonoContacto) {
+        this.telefonoContacto = telefonoContacto;
+    }
+
+    public String getSitioWeb() {
+        return sitioWeb;
+    }
+
+    public void setSitioWeb(String sitioWeb) {
+        this.sitioWeb = sitioWeb;
+    }
+
+    public Boolean getEventoPublico() {
+        return eventoPublico;
+    }
+
+    public void setEventoPublico(Boolean eventoPublico) {
+        this.eventoPublico = eventoPublico;
+    }
+
+    public String getDetallePrivado() {
+        return detallePrivado;
+    }
+
+    public void setDetallePrivado(String detallePrivado) {
+        this.detallePrivado = detallePrivado;
+    }
+
+    public Boolean getPermitirComentarios() {
+        return permitirComentarios;
+    }
+
+    public void setPermitirComentarios(Boolean permitirComentarios) {
+        this.permitirComentarios = permitirComentarios;
+    }
+
+    public Boolean getRecordatoriosAutomaticos() {
+        return recordatoriosAutomaticos;
+    }
+
+    public void setRecordatoriosAutomaticos(Boolean recordatoriosAutomaticos) {
+        this.recordatoriosAutomaticos = recordatoriosAutomaticos;
+    }
 }
