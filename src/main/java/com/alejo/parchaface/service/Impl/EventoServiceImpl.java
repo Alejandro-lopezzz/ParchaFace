@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import com.alejo.parchaface.dto.EventoDetalleResponse;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -467,5 +468,45 @@ public class EventoServiceImpl implements EventoService {
 
     eventoCommentRepository.deleteByEvento_IdEvento(idEvento);
     eventoRepository.delete(evento);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public EventoDetalleResponse getDetalleEventoById(Integer id) {
+    Evento e = eventoRepository.findWithOrganizadorByIdEvento(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+    return new EventoDetalleResponse(
+      e.getIdEvento(),
+      e.getTitulo(),
+      e.getDescripcion(),
+      e.getCategoria(),
+      e.getImagenPortadaUrl(),
+      e.getFecha(),
+      e.getHoraInicio(),
+      e.getHoraFin(),
+      e.getEventoEnLinea(),
+      e.getUrlVirtual(),
+      e.getUbicacion(),
+      e.getNombreLugar(),
+      e.getDireccionCompleta(),
+      e.getCiudad(),
+      e.getLatitud(),
+      e.getLongitud(),
+      e.getCupo(),
+      e.getEventoGratuito(),
+      e.getPrecio(),
+      e.getEmailContacto(),
+      e.getTelefonoContacto(),
+      e.getSitioWeb(),
+      e.getEventoPublico(),
+      e.getDetallePrivado(),
+      e.getPermitirComentarios(),
+      e.getRecordatoriosAutomaticos(),
+      e.getEstadoEvento() != null ? e.getEstadoEvento().name() : null,
+      e.getOrganizador() != null ? e.getOrganizador().getIdUsuario() : null,
+      e.getOrganizador() != null ? e.getOrganizador().getNombre() : null,
+      e.getOrganizador() != null ? e.getOrganizador().getCorreo() : null
+    );
   }
 }

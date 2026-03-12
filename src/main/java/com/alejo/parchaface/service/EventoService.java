@@ -2,6 +2,7 @@ package com.alejo.parchaface.service;
 
 import com.alejo.parchaface.dto.CrearEventoDTO;
 import com.alejo.parchaface.dto.CrearEventoForm;
+import com.alejo.parchaface.dto.EventoDetalleResponse;
 import com.alejo.parchaface.model.Evento;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
@@ -11,26 +12,25 @@ import java.util.List;
 
 public interface EventoService {
 
-    List<Evento> getAllEventos();
+  List<Evento> getAllEventos();
 
-    Evento getEventoById(Integer id);
+  Evento getEventoById(Integer id);
 
-    Evento saveEvento(Evento evento);
+  EventoDetalleResponse getDetalleEventoById(Integer id);
 
-    void deleteEvento(Integer id);
+  Evento saveEvento(Evento evento);
 
-    List<Evento> getEventosPorEstado(EstadoEvento estadoEvento);
+  void deleteEvento(Integer id);
 
-    // JSON (viejo)
-    Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
+  List<Evento> getEventosPorEstado(EstadoEvento estadoEvento);
 
-    // multipart/form-data (nuevo)
-    Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador);
+  Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
 
-    // multipart/form-data con estado específico (para borradores)
-    Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
+  Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador);
 
-    Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+  Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
 
-    void eliminarEventoYNotificar(Integer idEvento);
+  Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+
+  void eliminarEventoYNotificar(Integer idEvento);
 }
