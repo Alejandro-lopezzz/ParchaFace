@@ -1,5 +1,6 @@
 package com.alejo.parchaface.service;
 
+import com.alejo.parchaface.dto.ActualizarEventoDTO;
 import com.alejo.parchaface.dto.CrearEventoDTO;
 import com.alejo.parchaface.dto.CrearEventoForm;
 import com.alejo.parchaface.dto.EventoDetalleResponse;
@@ -30,7 +31,7 @@ public interface EventoService {
 
   Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
 
-  Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+  Evento actualizarEventoYNotificar(Integer idEvento, ActualizarEventoDTO cambios);
 
   void eliminarEventoYNotificar(Integer idEvento);
 }

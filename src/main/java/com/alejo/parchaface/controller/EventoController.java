@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import com.alejo.parchaface.dto.ActualizarEventoDTO;
 
 import java.util.List;
 
@@ -110,9 +111,9 @@ public class EventoController {
 
   @PutMapping("/{id}")
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
-  public Evento actualizar(
+  public EventoDetalleResponse actualizar(
     @PathVariable Integer id,
-    @RequestBody Evento cambios,
+    @Valid @RequestBody ActualizarEventoDTO cambios,
     Authentication authentication
   ) {
     Evento existente = eventoService.getEventoById(id);
@@ -134,7 +135,8 @@ public class EventoController {
       }
     }
 
-    return eventoService.actualizarEventoYNotificar(id, cambios);
+    eventoService.actualizarEventoYNotificar(id, cambios);
+    return eventoService.getDetalleEventoById(id);
   }
 
   @DeleteMapping("/{id}")
