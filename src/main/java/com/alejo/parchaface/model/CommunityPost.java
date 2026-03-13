@@ -27,8 +27,9 @@ public class CommunityPost {
   @Column(name = "event_id")
   private Integer eventId;
 
-  @Column(name = "author_correo", nullable = false, length = 150)
-  private String authorCorreo;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "usuario_id", nullable = false)
+  private Usuario usuario;
 
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt = LocalDateTime.now();
@@ -36,30 +37,75 @@ public class CommunityPost {
   @Column(name = "comments_count", nullable = false)
   private Integer commentsCount = 0;
 
-  public Integer getIdPost() { return idPost; }
-  public void setIdPost(Integer idPost) { this.idPost = idPost; }
+  public Integer getIdPost() {
+    return idPost;
+  }
 
-  public String getTitle() { return title; }
-  public void setTitle(String title) { this.title = title; }
+  public void setIdPost(Integer idPost) {
+    this.idPost = idPost;
+  }
 
-  public String getContent() { return content; }
-  public void setContent(String content) { this.content = content; }
+  public String getTitle() {
+    return title;
+  }
 
-  public String getCity() { return city; }
-  public void setCity(String city) { this.city = city; }
+  public void setTitle(String title) {
+    this.title = title;
+  }
 
-  public String getCategory() { return category; }
-  public void setCategory(String category) { this.category = category; }
+  public String getContent() {
+    return content;
+  }
 
-  public Integer getEventId() { return eventId; }
-  public void setEventId(Integer eventId) { this.eventId = eventId; }
+  public void setContent(String content) {
+    this.content = content;
+  }
 
-  public String getAuthorCorreo() { return authorCorreo; }
-  public void setAuthorCorreo(String authorCorreo) { this.authorCorreo = authorCorreo; }
+  public String getCity() {
+    return city;
+  }
 
-  public LocalDateTime getCreatedAt() { return createdAt; }
-  public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+  public void setCity(String city) {
+    this.city = city;
+  }
 
-  public Integer getCommentsCount() { return commentsCount; }
-  public void setCommentsCount(Integer commentsCount) { this.commentsCount = commentsCount; }
+  public String getCategory() {
+    return category;
+  }
+
+  public void setCategory(String category) {
+    this.category = category;
+  }
+
+  public Integer getEventId() {
+    return eventId;
+  }
+
+  public void setEventId(Integer eventId) {
+    this.eventId = eventId;
+  }
+
+  public Usuario getUsuario() {
+    return usuario;
+  }
+
+  public void setUsuario(Usuario usuario) {
+    this.usuario = usuario;
+  }
+
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public Integer getCommentsCount() {
+    return commentsCount;
+  }
+
+  public void setCommentsCount(Integer commentsCount) {
+    this.commentsCount = commentsCount;
+  }
 }

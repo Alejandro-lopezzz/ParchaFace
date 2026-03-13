@@ -79,7 +79,6 @@ public class PerfilController {
 
     List<ProfileActivityItemResponse> items = new ArrayList<>();
 
-    // 1) Eventos creados
     for (Evento evento : eventoRepository.findByOrganizador_IdUsuarioOrderByFechaCreacionDesc(usuario.getIdUsuario())) {
       items.add(new ProfileActivityItemResponse(
         "EVENTO_CREADO",
@@ -91,7 +90,6 @@ public class PerfilController {
       ));
     }
 
-    // 2) Inscripciones
     for (Inscripcion inscripcion : inscripcionRepository.findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(usuario.getIdUsuario())) {
       Evento evento = inscripcion.getEvento();
 
@@ -105,8 +103,7 @@ public class PerfilController {
       ));
     }
 
-    // 3) Publicaciones en comunidad
-    for (CommunityPost post : communityPostRepository.findByAuthorCorreoOrderByCreatedAtDesc(usuario.getCorreo())) {
+    for (CommunityPost post : communityPostRepository.findByUsuario_IdUsuarioOrderByCreatedAtDesc(usuario.getIdUsuario())) {
       items.add(new ProfileActivityItemResponse(
         "POST_COMUNIDAD",
         "Publicaste en la comunidad",
@@ -117,8 +114,7 @@ public class PerfilController {
       ));
     }
 
-    // 4) Comentarios en comunidad
-    for (CommunityComment comment : communityCommentRepository.findByAuthorCorreoOrderByCreatedAtDesc(usuario.getCorreo())) {
+    for (CommunityComment comment : communityCommentRepository.findByUsuario_IdUsuarioOrderByCreatedAtDesc(usuario.getIdUsuario())) {
       items.add(new ProfileActivityItemResponse(
         "COMENTARIO_COMUNIDAD",
         "Comentaste en la comunidad",
@@ -129,7 +125,6 @@ public class PerfilController {
       ));
     }
 
-    // 5) Comentarios en eventos
     for (EventoComment comment : eventoCommentRepository.findByUsuario_IdUsuarioOrderByCreatedAtDesc(usuario.getIdUsuario())) {
       String tituloEvento = comment.getEvento() != null ? safe(comment.getEvento().getTitulo()) : "evento";
       Integer eventoId = comment.getEvento() != null ? comment.getEvento().getIdEvento() : null;
@@ -144,7 +139,6 @@ public class PerfilController {
       ));
     }
 
-    // 6) Notificaciones
     for (Notificacion notificacion : notificacionRepository.findByUsuario_IdUsuarioOrderByFechaEnvioDesc(usuario.getIdUsuario())) {
       items.add(new ProfileActivityItemResponse(
         "NOTIFICACION",

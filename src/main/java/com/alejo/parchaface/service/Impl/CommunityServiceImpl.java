@@ -1,8 +1,19 @@
 package com.alejo.parchaface.service.Impl;
 
-import com.alejo.parchaface.dto.*;
-import com.alejo.parchaface.model.*;
-import com.alejo.parchaface.repository.*;
+import com.alejo.parchaface.dto.CreateCommunityCommentRequest;
+import com.alejo.parchaface.dto.CreateCommunityPostRequest;
+import com.alejo.parchaface.dto.LikeSummaryResponse;
+import com.alejo.parchaface.dto.RatingSummaryResponse;
+import com.alejo.parchaface.model.CommentLike;
+import com.alejo.parchaface.model.CommunityComment;
+import com.alejo.parchaface.model.CommunityPost;
+import com.alejo.parchaface.model.PostRating;
+import com.alejo.parchaface.model.Usuario;
+import com.alejo.parchaface.repository.CommentLikeRepository;
+import com.alejo.parchaface.repository.CommunityCommentRepository;
+import com.alejo.parchaface.repository.CommunityPostRepository;
+import com.alejo.parchaface.repository.PostRatingRepository;
+import com.alejo.parchaface.repository.UsuarioRepository;
 import com.alejo.parchaface.service.CommunityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,17 +29,20 @@ public class CommunityServiceImpl implements CommunityService {
   private final CommunityCommentRepository commentRepo;
   private final PostRatingRepository postRatingRepo;
   private final CommentLikeRepository commentLikeRepo;
+  private final UsuarioRepository usuarioRepository;
 
   public CommunityServiceImpl(
     CommunityPostRepository postRepo,
     CommunityCommentRepository commentRepo,
     PostRatingRepository postRatingRepo,
-    CommentLikeRepository commentLikeRepo
+    CommentLikeRepository commentLikeRepo,
+    UsuarioRepository usuarioRepository
   ) {
     this.postRepo = postRepo;
     this.commentRepo = commentRepo;
     this.postRatingRepo = postRatingRepo;
     this.commentLikeRepo = commentLikeRepo;
+    this.usuarioRepository = usuarioRepository;
   }
 
   @Override
@@ -40,7 +54,16 @@ public class CommunityServiceImpl implements CommunityService {
       list = list.stream().filter(p ->
         (p.getTitle() != null && p.getTitle().toLowerCase().contains(qq)) ||
           (p.getContent() != null && p.getContent().toLowerCase().contains(qq)) ||
-          (p.getAuthorCorreo() != null && p.getAuthorCorreo().toLowerCase().contains(qq))
+          (
+            p.getUsuario() != null &&
+              p.getUsuario().getCorreo() != null &&
+              p.getUsuario().getCorreo().toLowerCase().contains(qq)
+          ) ||
+          (
+            p.getUsuario() != null &&
+              p.getUsuario().getNombre() != null &&
+              p.getUsuario().getNombre().toLowerCase().contains(qq)
+          )
       ).toList();
     }
 
@@ -92,13 +115,16 @@ public class CommunityServiceImpl implements CommunityService {
     if (req.title == null || req.title.trim().length() < 5) throw new RuntimeException("Título muy corto");
     if (req.content == null || req.content.trim().length() < 10) throw new RuntimeException("Contenido muy corto");
 
+    Usuario usuario = usuarioRepository.findByCorreo(correo)
+      .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
     CommunityPost p = new CommunityPost();
     p.setTitle(req.title.trim());
     p.setContent(req.content.trim());
     p.setCity(req.city);
     p.setCategory(req.category);
     p.setEventId(req.eventId);
-    p.setAuthorCorreo(correo);
+    p.setUsuario(usuario);
     p.setCreatedAt(LocalDateTime.now());
     p.setCommentsCount(0);
 
@@ -111,12 +137,15 @@ public class CommunityServiceImpl implements CommunityService {
     if (req == null) throw new RuntimeException("Body requerido");
     if (req.content == null || req.content.trim().length() < 2) throw new RuntimeException("Comentario muy corto");
 
+    Usuario usuario = usuarioRepository.findByCorreo(correo)
+      .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
     CommunityPost post = getPost(postId);
 
     CommunityComment c = new CommunityComment();
     c.setPostId(postId);
     c.setContent(req.content.trim());
-    c.setAuthorCorreo(correo);
+    c.setUsuario(usuario);
     c.setCreatedAt(LocalDateTime.now());
 
     CommunityComment saved = commentRepo.save(c);
@@ -128,9 +157,6 @@ public class CommunityServiceImpl implements CommunityService {
     return saved;
   }
 
-  // ======================
-  // ⭐ Rating del POST
-  // ======================
   @Override
   @Transactional
   public PostRating ratePost(Integer postId, Integer rating, String correo) {
@@ -138,7 +164,6 @@ public class CommunityServiceImpl implements CommunityService {
 
     int safe = Math.max(1, Math.min(5, rating));
 
-    // valida post existe
     getPost(postId);
 
     return postRatingRepo.findByPostIdAndUserCorreo(postId, correo).map(existing -> {
@@ -177,9 +202,6 @@ public class CommunityServiceImpl implements CommunityService {
     return new RatingSummaryResponse(rounded, count, my);
   }
 
-  // ======================
-  // 👍 Like de COMENTARIO
-  // ======================
   @Override
   @Transactional
   public LikeSummaryResponse toggleCommentLike(Integer commentId, String correo) {
