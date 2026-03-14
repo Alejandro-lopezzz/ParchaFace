@@ -1,5 +1,6 @@
-package com.alejo.parchaface.security;
+package com.alejo.parchaface.config;
 
+import com.alejo.parchaface.security.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -42,12 +43,14 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers(
-          "/auth/**",
-          "/swagger-ui.html",
-          "/swagger-ui/**",
-          "/v3/api-docs/**",
-          "/uploads/**",
-          "/error"
+          "/",
+          "/community",
+          "/community/**",
+          "/explore",
+          "/login",
+          "/register",
+          "/perfil",
+          "/event-detail/**"
         ).permitAll()
 
         .requestMatchers(HttpMethod.GET, "/eventos/**").permitAll()
