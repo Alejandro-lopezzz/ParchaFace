@@ -7,10 +7,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Component
 public class JwtFilter extends OncePerRequestFilter {
 
   @Override
@@ -23,7 +25,6 @@ public class JwtFilter extends OncePerRequestFilter {
     if ("OPTIONS".equalsIgnoreCase(method)) return true;
     if ("/error".equals(sp)) return true;
 
-    // Públicos de auth y docs
     if (sp.startsWith("/auth/")
       || sp.equals("/auth")
       || sp.startsWith("/swagger-ui")
@@ -32,12 +33,10 @@ public class JwtFilter extends OncePerRequestFilter {
       return true;
     }
 
-    // Uploads públicos
     if ("GET".equalsIgnoreCase(method) && sp.startsWith("/uploads/")) {
       return true;
     }
 
-    // Eventos públicos
     if ("GET".equalsIgnoreCase(method)
       && (sp.equals("/eventos")
       || sp.matches("^/eventos/\\d+$")
@@ -46,15 +45,17 @@ public class JwtFilter extends OncePerRequestFilter {
       return true;
     }
 
-    // Clima público
     if ("GET".equalsIgnoreCase(method)
       && (sp.equals("/api/clima") || sp.equals("/api/clima/ciudades"))) {
       return true;
     }
 
-    // Comentarios públicos
     if ("GET".equalsIgnoreCase(method)
       && sp.matches("^/api/eventos/\\d+/comentarios$")) {
+      return true;
+    }
+
+    if ("GET".equalsIgnoreCase(method) && sp.startsWith("/api/community")) {
       return true;
     }
 
@@ -62,10 +63,11 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected void doFilterInternal(HttpServletRequest request,
-                                  HttpServletResponse response,
-                                  FilterChain filterChain)
-    throws ServletException, IOException {
+  protected void doFilterInternal(
+    HttpServletRequest request,
+    HttpServletResponse response,
+    FilterChain filterChain
+  ) throws ServletException, IOException {
 
     String authHeader = request.getHeader("Authorization");
     System.out.println("[JwtFilter] Authorization raw=[" + authHeader + "]");
@@ -105,7 +107,9 @@ public class JwtFilter extends OncePerRequestFilter {
       var authentication =
         new UsernamePasswordAuthenticationToken(correo, null, roles);
 
-      authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+      authentication.setDetails(
+        new WebAuthenticationDetailsSource().buildDetails(request)
+      );
       SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
