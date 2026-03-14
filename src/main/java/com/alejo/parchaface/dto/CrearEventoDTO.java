@@ -1,8 +1,6 @@
 package com.alejo.parchaface.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,39 +17,24 @@ public class CrearEventoDTO {
     @Size(max = 80)
     private String categoria;
 
-    @Size(max = 500)
     private String imagenPortadaUrl;
-
-    @Size(max = 80)
     private String imagenPortadaContentType;
 
-    // ======================
-    // Fecha y horas
-    // ======================
     @NotNull(message = "La fecha es obligatoria")
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fecha;
 
     @NotNull(message = "La hora de inicio es obligatoria")
-    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime horaInicio;
 
     @NotNull(message = "La hora de finalización es obligatoria")
-    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime horaFin;
 
-    // ======================
-    // Modalidad
-    // ======================
     @NotNull(message = "Debes indicar si el evento es en línea o no")
     private Boolean eventoEnLinea;
 
     @Size(max = 500)
     private String urlVirtual;
 
-    // ======================
-    // Ubicación (presencial)
-    // ======================
     @Size(max = 200)
     private String ubicacion;
 
@@ -65,12 +48,8 @@ public class CrearEventoDTO {
     private String ciudad;
 
     private Double latitud;
-
     private Double longitud;
 
-    // ======================
-    // Cupo / Precio
-    // ======================
     @NotNull(message = "El cupo es obligatorio")
     @Min(value = 1, message = "El cupo debe ser mayor a 0")
     private Integer cupo;
@@ -78,12 +57,8 @@ public class CrearEventoDTO {
     @NotNull(message = "Debes indicar si el evento es gratuito o no")
     private Boolean eventoGratuito;
 
-    @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     private BigDecimal precio;
 
-    // ======================
-    // Contacto
-    // ======================
     @Email(message = "Email de contacto inválido")
     @Size(max = 150)
     private String emailContacto;
@@ -94,9 +69,6 @@ public class CrearEventoDTO {
     @Size(max = 500)
     private String sitioWeb;
 
-    // ======================
-    // Privacidad / Config
-    // ======================
     @NotNull(message = "Debes indicar si el evento es público o no")
     private Boolean eventoPublico;
 
@@ -109,284 +81,81 @@ public class CrearEventoDTO {
     @NotNull(message = "Debes indicar si envías recordatorios automáticos o no")
     private Boolean recordatoriosAutomaticos;
 
-    // =========================================================
-    // VALIDACIONES CONDICIONALES
-    // =========================================================
+    public String getTitulo() { return titulo; }
+    public void setTitulo(String titulo) { this.titulo = titulo; }
 
-    @AssertTrue(message = "Si el evento es en línea, debes enviar urlVirtual")
-    public boolean isUrlVirtualValida() {
-        if (Boolean.TRUE.equals(eventoEnLinea)) {
-            return urlVirtual != null && !urlVirtual.isBlank();
-        }
-        return true;
-    }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    @AssertTrue(message = "Si el evento NO es en línea, la ubicación es obligatoria")
-    public boolean isUbicacionValida() {
-        if (Boolean.FALSE.equals(eventoEnLinea)) {
-            return ubicacion != null && !ubicacion.isBlank();
-        }
-        return true;
-    }
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
 
-    @AssertTrue(message = "Si el evento NO es en línea, debes seleccionar una ubicación en el mapa")
-    public boolean isCoordenadasValidas() {
-        if (Boolean.FALSE.equals(eventoEnLinea)) {
-            return latitud != null && longitud != null;
-        }
-        return true;
-    }
+    public String getImagenPortadaUrl() { return imagenPortadaUrl; }
+    public void setImagenPortadaUrl(String imagenPortadaUrl) { this.imagenPortadaUrl = imagenPortadaUrl; }
 
-    @AssertTrue(message = "La latitud debe estar entre -90 y 90")
-    public boolean isLatitudEnRango() {
-        if (latitud == null) {
-            return true;
-        }
-        return latitud >= -90 && latitud <= 90;
-    }
+    public String getImagenPortadaContentType() { return imagenPortadaContentType; }
+    public void setImagenPortadaContentType(String imagenPortadaContentType) { this.imagenPortadaContentType = imagenPortadaContentType; }
 
-    @AssertTrue(message = "La longitud debe estar entre -180 y 180")
-    public boolean isLongitudEnRango() {
-        if (longitud == null) {
-            return true;
-        }
-        return longitud >= -180 && longitud <= 180;
-    }
+    public LocalDate getFecha() { return fecha; }
+    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
 
-    @AssertTrue(message = "Si el evento NO es gratuito, debes enviar el precio")
-    public boolean isPrecioValido() {
-        if (Boolean.FALSE.equals(eventoGratuito)) {
-            return precio != null && precio.compareTo(BigDecimal.ZERO) > 0;
-        }
-        return true;
-    }
+    public LocalTime getHoraInicio() { return horaInicio; }
+    public void setHoraInicio(LocalTime horaInicio) { this.horaInicio = horaInicio; }
 
-    @AssertTrue(message = "Si el evento NO es público, debes indicar el detalle (empresa/índole)")
-    public boolean isDetallePrivadoValido() {
-        if (Boolean.FALSE.equals(eventoPublico)) {
-            return detallePrivado != null && !detallePrivado.isBlank();
-        }
-        return true;
-    }
+    public LocalTime getHoraFin() { return horaFin; }
+    public void setHoraFin(LocalTime horaFin) { this.horaFin = horaFin; }
 
-    @AssertTrue(message = "La imagen de portada debe ser JPG (image/jpeg o image/jpg) si envías contentType")
-    public boolean isImagenPortadaJpg() {
-        if (imagenPortadaContentType == null || imagenPortadaContentType.isBlank()) {
-            return true;
-        }
-        String ct = imagenPortadaContentType.trim().toLowerCase();
-        return ct.equals("image/jpeg") || ct.equals("image/jpg");
-    }
+    public Boolean getEventoEnLinea() { return eventoEnLinea; }
+    public void setEventoEnLinea(Boolean eventoEnLinea) { this.eventoEnLinea = eventoEnLinea; }
 
-    // ======================
-    // GETTERS / SETTERS
-    // ======================
+    public String getUrlVirtual() { return urlVirtual; }
+    public void setUrlVirtual(String urlVirtual) { this.urlVirtual = urlVirtual; }
 
-    public String getTitulo() {
-        return titulo;
-    }
+    public String getUbicacion() { return ubicacion; }
+    public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
 
-    public void setTitulo(String titulo) {
-        this.titulo = titulo;
-    }
+    public String getNombreLugar() { return nombreLugar; }
+    public void setNombreLugar(String nombreLugar) { this.nombreLugar = nombreLugar; }
 
-    public String getDescripcion() {
-        return descripcion;
-    }
+    public String getDireccionCompleta() { return direccionCompleta; }
+    public void setDireccionCompleta(String direccionCompleta) { this.direccionCompleta = direccionCompleta; }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
+    public String getCiudad() { return ciudad; }
+    public void setCiudad(String ciudad) { this.ciudad = ciudad; }
 
-    public String getCategoria() {
-        return categoria;
-    }
+    public Double getLatitud() { return latitud; }
+    public void setLatitud(Double latitud) { this.latitud = latitud; }
 
-    public void setCategoria(String categoria) {
-        this.categoria = categoria;
-    }
+    public Double getLongitud() { return longitud; }
+    public void setLongitud(Double longitud) { this.longitud = longitud; }
 
-    public String getImagenPortadaUrl() {
-        return imagenPortadaUrl;
-    }
+    public Integer getCupo() { return cupo; }
+    public void setCupo(Integer cupo) { this.cupo = cupo; }
 
-    public void setImagenPortadaUrl(String imagenPortadaUrl) {
-        this.imagenPortadaUrl = imagenPortadaUrl;
-    }
+    public Boolean getEventoGratuito() { return eventoGratuito; }
+    public void setEventoGratuito(Boolean eventoGratuito) { this.eventoGratuito = eventoGratuito; }
 
-    public String getImagenPortadaContentType() {
-        return imagenPortadaContentType;
-    }
+    public BigDecimal getPrecio() { return precio; }
+    public void setPrecio(BigDecimal precio) { this.precio = precio; }
 
-    public void setImagenPortadaContentType(String imagenPortadaContentType) {
-        this.imagenPortadaContentType = imagenPortadaContentType;
-    }
+    public String getEmailContacto() { return emailContacto; }
+    public void setEmailContacto(String emailContacto) { this.emailContacto = emailContacto; }
 
-    public LocalDate getFecha() {
-        return fecha;
-    }
+    public String getTelefonoContacto() { return telefonoContacto; }
+    public void setTelefonoContacto(String telefonoContacto) { this.telefonoContacto = telefonoContacto; }
 
-    public void setFecha(LocalDate fecha) {
-        this.fecha = fecha;
-    }
+    public String getSitioWeb() { return sitioWeb; }
+    public void setSitioWeb(String sitioWeb) { this.sitioWeb = sitioWeb; }
 
-    public LocalTime getHoraInicio() {
-        return horaInicio;
-    }
+    public Boolean getEventoPublico() { return eventoPublico; }
+    public void setEventoPublico(Boolean eventoPublico) { this.eventoPublico = eventoPublico; }
 
-    public void setHoraInicio(LocalTime horaInicio) {
-        this.horaInicio = horaInicio;
-    }
+    public String getDetallePrivado() { return detallePrivado; }
+    public void setDetallePrivado(String detallePrivado) { this.detallePrivado = detallePrivado; }
 
-    public LocalTime getHoraFin() {
-        return horaFin;
-    }
+    public Boolean getPermitirComentarios() { return permitirComentarios; }
+    public void setPermitirComentarios(Boolean permitirComentarios) { this.permitirComentarios = permitirComentarios; }
 
-    public void setHoraFin(LocalTime horaFin) {
-        this.horaFin = horaFin;
-    }
-
-    public Boolean getEventoEnLinea() {
-        return eventoEnLinea;
-    }
-
-    public void setEventoEnLinea(Boolean eventoEnLinea) {
-        this.eventoEnLinea = eventoEnLinea;
-    }
-
-    public String getUrlVirtual() {
-        return urlVirtual;
-    }
-
-    public void setUrlVirtual(String urlVirtual) {
-        this.urlVirtual = urlVirtual;
-    }
-
-    public String getUbicacion() {
-        return ubicacion;
-    }
-
-    public void setUbicacion(String ubicacion) {
-        this.ubicacion = ubicacion;
-    }
-
-    public String getNombreLugar() {
-        return nombreLugar;
-    }
-
-    public void setNombreLugar(String nombreLugar) {
-        this.nombreLugar = nombreLugar;
-    }
-
-    public String getDireccionCompleta() {
-        return direccionCompleta;
-    }
-
-    public void setDireccionCompleta(String direccionCompleta) {
-        this.direccionCompleta = direccionCompleta;
-    }
-
-    public String getCiudad() {
-        return ciudad;
-    }
-
-    public void setCiudad(String ciudad) {
-        this.ciudad = ciudad;
-    }
-
-    public Double getLatitud() {
-        return latitud;
-    }
-
-    public void setLatitud(Double latitud) {
-        this.latitud = latitud;
-    }
-
-    public Double getLongitud() {
-        return longitud;
-    }
-
-    public void setLongitud(Double longitud) {
-        this.longitud = longitud;
-    }
-
-    public Integer getCupo() {
-        return cupo;
-    }
-
-    public void setCupo(Integer cupo) {
-        this.cupo = cupo;
-    }
-
-    public Boolean getEventoGratuito() {
-        return eventoGratuito;
-    }
-
-    public void setEventoGratuito(Boolean eventoGratuito) {
-        this.eventoGratuito = eventoGratuito;
-    }
-
-    public BigDecimal getPrecio() {
-        return precio;
-    }
-
-    public void setPrecio(BigDecimal precio) {
-        this.precio = precio;
-    }
-
-    public String getEmailContacto() {
-        return emailContacto;
-    }
-
-    public void setEmailContacto(String emailContacto) {
-        this.emailContacto = emailContacto;
-    }
-
-    public String getTelefonoContacto() {
-        return telefonoContacto;
-    }
-
-    public void setTelefonoContacto(String telefonoContacto) {
-        this.telefonoContacto = telefonoContacto;
-    }
-
-    public String getSitioWeb() {
-        return sitioWeb;
-    }
-
-    public void setSitioWeb(String sitioWeb) {
-        this.sitioWeb = sitioWeb;
-    }
-
-    public Boolean getEventoPublico() {
-        return eventoPublico;
-    }
-
-    public void setEventoPublico(Boolean eventoPublico) {
-        this.eventoPublico = eventoPublico;
-    }
-
-    public String getDetallePrivado() {
-        return detallePrivado;
-    }
-
-    public void setDetallePrivado(String detallePrivado) {
-        this.detallePrivado = detallePrivado;
-    }
-
-    public Boolean getPermitirComentarios() {
-        return permitirComentarios;
-    }
-
-    public void setPermitirComentarios(Boolean permitirComentarios) {
-        this.permitirComentarios = permitirComentarios;
-    }
-
-    public Boolean getRecordatoriosAutomaticos() {
-        return recordatoriosAutomaticos;
-    }
-
-    public void setRecordatoriosAutomaticos(Boolean recordatoriosAutomaticos) {
-        this.recordatoriosAutomaticos = recordatoriosAutomaticos;
-    }
+    public Boolean getRecordatoriosAutomaticos() { return recordatoriosAutomaticos; }
+    public void setRecordatoriosAutomaticos(Boolean recordatoriosAutomaticos) { this.recordatoriosAutomaticos = recordatoriosAutomaticos; }
 }

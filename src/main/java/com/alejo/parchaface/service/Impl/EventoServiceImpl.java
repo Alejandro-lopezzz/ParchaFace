@@ -17,14 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import com.alejo.parchaface.dto.EventoDetalleResponse;
-import com.alejo.parchaface.dto.ActualizarEventoDTO;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -38,29 +33,14 @@ public class EventoServiceImpl implements EventoService {
   private final NotificacionService notificacionService;
   private final EventoCommentRepository eventoCommentRepository;
 
-  // Valor fijo para cumplir NOT NULL cuando el evento es en línea
   private static final String LUGAR_EN_LINEA = "EN LINEA";
-
-  // Carpeta física donde se guardan las portadas
   private static final Path UPLOAD_DIR = Paths.get("uploads", "eventos");
-
-  // URL pública
   private static final String PUBLIC_URL_PREFIX = "/uploads/eventos/";
 
-  private String trimToNull(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
-  }
-
-  public EventoServiceImpl(
-          EventoRepository eventoRepository,
-          InscripcionRepository inscripcionRepository,
-          NotificacionService notificacionService,
-          EventoCommentRepository eventoCommentRepository
-  ) {
+  public EventoServiceImpl(EventoRepository eventoRepository,
+                           InscripcionRepository inscripcionRepository,
+                           NotificacionService notificacionService,
+                           EventoCommentRepository eventoCommentRepository) {
     this.eventoRepository = eventoRepository;
     this.inscripcionRepository = inscripcionRepository;
     this.notificacionService = notificacionService;
@@ -70,6 +50,11 @@ public class EventoServiceImpl implements EventoService {
   @Override
   public List<Evento> getAllEventos() {
     return eventoRepository.findAll();
+  }
+
+  @Override
+  public List<Evento> getEventosPublicos() {
+    return eventoRepository.findByEstadoEvento(EstadoEvento.activo);
   }
 
   @Override
@@ -107,7 +92,7 @@ public class EventoServiceImpl implements EventoService {
     evento.setDescripcion(dto.getDescripcion());
     evento.setCategoria(dto.getCategoria());
 
-    // Imagen (flujo DTO viejo)
+    // Imagen (flujo JSON)
     evento.setImagenPortadaUrl(dto.getImagenPortadaUrl());
     evento.setImagenPortadaContentType(dto.getImagenPortadaContentType());
 
@@ -126,8 +111,6 @@ public class EventoServiceImpl implements EventoService {
       evento.setNombreLugar(null);
       evento.setDireccionCompleta(null);
       evento.setCiudad(null);
-
-      // Coordenadas no aplican para evento en línea
       evento.setLatitud(null);
       evento.setLongitud(null);
     } else {
@@ -136,9 +119,6 @@ public class EventoServiceImpl implements EventoService {
       evento.setNombreLugar(dto.getNombreLugar());
       evento.setDireccionCompleta(dto.getDireccionCompleta());
       evento.setCiudad(dto.getCiudad());
-
-      // OJO:
-      // Esto solo compila si también agregas latitud/longitud al CrearEventoDTO
       evento.setLatitud(dto.getLatitud());
       evento.setLongitud(dto.getLongitud());
     }
@@ -231,7 +211,7 @@ public class EventoServiceImpl implements EventoService {
     evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
 
-    // Imagen
+    // Imagen (archivo real)
     MultipartFile file = imagenPortada;
     if (file == null) {
       try {
@@ -257,7 +237,7 @@ public class EventoServiceImpl implements EventoService {
   }
 
   // =========================
-  // CREAR EVENTO — FORM-DATA con estado específico
+  // CREAR EVENTO — FORM-DATA con estado específico (borradores)
   // =========================
   @Override
   public Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado) {
@@ -316,7 +296,7 @@ public class EventoServiceImpl implements EventoService {
     evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
 
-    // Imagen
+    // Imagen (archivo real)
     MultipartFile file = imagenPortada;
     if (file == null) {
       try {
@@ -348,9 +328,7 @@ public class EventoServiceImpl implements EventoService {
     try {
       Files.createDirectories(UPLOAD_DIR);
 
-      String contentType = (file.getContentType() == null)
-              ? ""
-              : file.getContentType().toLowerCase().trim();
+      String contentType = (file.getContentType() == null) ? "" : file.getContentType().toLowerCase().trim();
 
       boolean ok = contentType.equals("image/jpeg")
               || contentType.equals("image/jpg")
@@ -376,7 +354,6 @@ public class EventoServiceImpl implements EventoService {
       }
 
       String filename = UUID.randomUUID() + "." + ext;
-
       Path target = UPLOAD_DIR.resolve(filename).normalize();
 
       if (!target.startsWith(UPLOAD_DIR.normalize())) {
@@ -400,92 +377,46 @@ public class EventoServiceImpl implements EventoService {
     return filename.substring(dot + 1).trim().toLowerCase();
   }
 
-  private record SavedImage(String publicUrl, String contentType) {
-  }
+  private record SavedImage(String publicUrl, String contentType) {}
 
   @Override
   @Transactional
-  public Evento actualizarEventoYNotificar(Integer idEvento, ActualizarEventoDTO cambios) {
+  public Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios) {
     Evento existente = eventoRepository.findById(idEvento)
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
-
-    String nuevoTitulo = trimToNull(cambios.getTitulo());
-    String nuevaUbicacion = trimToNull(cambios.getUbicacion());
-    String nuevaUrlVirtual = trimToNull(cambios.getUrlVirtual());
-    String nuevoDetallePrivado = trimToNull(cambios.getDetallePrivado());
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
     boolean cambioClave =
-      (nuevoTitulo != null && !nuevoTitulo.equals(existente.getTitulo()))
-        || (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha()))
-        || (nuevaUbicacion != null && !nuevaUbicacion.equals(existente.getUbicacion()));
+            (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
+                    (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
+                    (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
 
-    if (nuevoTitulo != null) existente.setTitulo(nuevoTitulo);
-    if (cambios.getDescripcion() != null) existente.setDescripcion(trimToNull(cambios.getDescripcion()));
-    if (cambios.getCategoria() != null) existente.setCategoria(trimToNull(cambios.getCategoria()));
+    if (cambios.getTitulo() != null) existente.setTitulo(cambios.getTitulo());
+    if (cambios.getDescripcion() != null) existente.setDescripcion(cambios.getDescripcion());
+    if (cambios.getCategoria() != null) existente.setCategoria(cambios.getCategoria());
 
     if (cambios.getFecha() != null) existente.setFecha(cambios.getFecha());
     if (cambios.getHoraInicio() != null) existente.setHoraInicio(cambios.getHoraInicio());
     if (cambios.getHoraFin() != null) existente.setHoraFin(cambios.getHoraFin());
 
     if (cambios.getEventoEnLinea() != null) existente.setEventoEnLinea(cambios.getEventoEnLinea());
-
-    boolean enLinea = Boolean.TRUE.equals(
-      cambios.getEventoEnLinea() != null ? cambios.getEventoEnLinea() : existente.getEventoEnLinea()
-    );
-
-    if (enLinea) {
-      if (nuevaUrlVirtual == null) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La URL virtual es obligatoria para eventos en línea");
-      }
-      existente.setUrlVirtual(nuevaUrlVirtual);
-      existente.setUbicacion(LUGAR_EN_LINEA);
-      existente.setNombreLugar(null);
-      existente.setDireccionCompleta(null);
-      existente.setCiudad(null);
-      existente.setLatitud(null);
-      existente.setLongitud(null);
-    } else {
-      if (nuevaUbicacion != null) {
-        existente.setUbicacion(nuevaUbicacion);
-      }
-      if (cambios.getUrlVirtual() != null) existente.setUrlVirtual(null);
-      if (cambios.getNombreLugar() != null) existente.setNombreLugar(trimToNull(cambios.getNombreLugar()));
-      if (cambios.getDireccionCompleta() != null) existente.setDireccionCompleta(trimToNull(cambios.getDireccionCompleta()));
-      if (cambios.getCiudad() != null) existente.setCiudad(trimToNull(cambios.getCiudad()));
-      if (cambios.getLatitud() != null) existente.setLatitud(cambios.getLatitud());
-      if (cambios.getLongitud() != null) existente.setLongitud(cambios.getLongitud());
-    }
+    if (cambios.getUrlVirtual() != null) existente.setUrlVirtual(cambios.getUrlVirtual());
+    if (cambios.getUbicacion() != null) existente.setUbicacion(cambios.getUbicacion());
+    if (cambios.getNombreLugar() != null) existente.setNombreLugar(cambios.getNombreLugar());
+    if (cambios.getDireccionCompleta() != null) existente.setDireccionCompleta(cambios.getDireccionCompleta());
+    if (cambios.getCiudad() != null) existente.setCiudad(cambios.getCiudad());
+    if (cambios.getLatitud() != null) existente.setLatitud(cambios.getLatitud());
+    if (cambios.getLongitud() != null) existente.setLongitud(cambios.getLongitud());
 
     if (cambios.getCupo() != null) existente.setCupo(cambios.getCupo());
     if (cambios.getEventoGratuito() != null) existente.setEventoGratuito(cambios.getEventoGratuito());
+    if (cambios.getPrecio() != null) existente.setPrecio(cambios.getPrecio());
 
-    boolean gratuito = Boolean.TRUE.equals(
-      cambios.getEventoGratuito() != null ? cambios.getEventoGratuito() : existente.getEventoGratuito()
-    );
-    if (gratuito) {
-      existente.setPrecio(null);
-    } else if (cambios.getPrecio() != null) {
-      existente.setPrecio(cambios.getPrecio());
-    } else if (existente.getPrecio() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El precio es obligatorio cuando el evento no es gratuito");
-    }
-
-    if (cambios.getEmailContacto() != null) existente.setEmailContacto(trimToNull(cambios.getEmailContacto()));
-    if (cambios.getTelefonoContacto() != null) existente.setTelefonoContacto(trimToNull(cambios.getTelefonoContacto()));
-    if (cambios.getSitioWeb() != null) existente.setSitioWeb(trimToNull(cambios.getSitioWeb()));
+    if (cambios.getEmailContacto() != null) existente.setEmailContacto(cambios.getEmailContacto());
+    if (cambios.getTelefonoContacto() != null) existente.setTelefonoContacto(cambios.getTelefonoContacto());
+    if (cambios.getSitioWeb() != null) existente.setSitioWeb(cambios.getSitioWeb());
 
     if (cambios.getEventoPublico() != null) existente.setEventoPublico(cambios.getEventoPublico());
-
-    boolean publico = Boolean.TRUE.equals(
-      cambios.getEventoPublico() != null ? cambios.getEventoPublico() : existente.getEventoPublico()
-    );
-    if (publico) {
-      existente.setDetallePrivado(null);
-    } else if (nuevoDetallePrivado != null) {
-      existente.setDetallePrivado(nuevoDetallePrivado);
-    } else if (existente.getDetallePrivado() == null || existente.getDetallePrivado().isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El detalle privado es obligatorio cuando el evento no es público");
-    }
+    if (cambios.getDetallePrivado() != null) existente.setDetallePrivado(cambios.getDetallePrivado());
 
     if (cambios.getPermitirComentarios() != null) existente.setPermitirComentarios(cambios.getPermitirComentarios());
     if (cambios.getRecordatoriosAutomaticos() != null) existente.setRecordatoriosAutomaticos(cambios.getRecordatoriosAutomaticos());
@@ -496,8 +427,8 @@ public class EventoServiceImpl implements EventoService {
       List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
       for (Inscripcion ins : inscripciones) {
         notificacionService.crearNotificacion(
-          ins.getUsuario(),
-          "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios."
+                ins.getUsuario(),
+                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios."
         );
       }
     }
@@ -522,45 +453,5 @@ public class EventoServiceImpl implements EventoService {
 
     eventoCommentRepository.deleteByEvento_IdEvento(idEvento);
     eventoRepository.delete(evento);
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public EventoDetalleResponse getDetalleEventoById(Integer id) {
-    Evento e = eventoRepository.findWithOrganizadorByIdEvento(id)
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
-
-    return new EventoDetalleResponse(
-      e.getIdEvento(),
-      e.getTitulo(),
-      e.getDescripcion(),
-      e.getCategoria(),
-      e.getImagenPortadaUrl(),
-      e.getFecha(),
-      e.getHoraInicio(),
-      e.getHoraFin(),
-      e.getEventoEnLinea(),
-      e.getUrlVirtual(),
-      e.getUbicacion(),
-      e.getNombreLugar(),
-      e.getDireccionCompleta(),
-      e.getCiudad(),
-      e.getLatitud(),
-      e.getLongitud(),
-      e.getCupo(),
-      e.getEventoGratuito(),
-      e.getPrecio(),
-      e.getEmailContacto(),
-      e.getTelefonoContacto(),
-      e.getSitioWeb(),
-      e.getEventoPublico(),
-      e.getDetallePrivado(),
-      e.getPermitirComentarios(),
-      e.getRecordatoriosAutomaticos(),
-      e.getEstadoEvento() != null ? e.getEstadoEvento().name() : null,
-      e.getOrganizador() != null ? e.getOrganizador().getIdUsuario() : null,
-      e.getOrganizador() != null ? e.getOrganizador().getNombre() : null,
-      e.getOrganizador() != null ? e.getOrganizador().getCorreo() : null
-    );
   }
 }
