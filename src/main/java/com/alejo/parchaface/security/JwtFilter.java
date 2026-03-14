@@ -20,8 +20,6 @@ public class JwtFilter extends OncePerRequestFilter {
     String sp = request.getServletPath();
     String method = request.getMethod();
 
-    System.out.println("[JwtFilter] " + method + " servletPath=" + sp + " uri=" + request.getRequestURI());
-
     if ("OPTIONS".equalsIgnoreCase(method)) return true;
     if ("/error".equals(sp)) return true;
 
@@ -55,10 +53,6 @@ public class JwtFilter extends OncePerRequestFilter {
       return true;
     }
 
-    if ("GET".equalsIgnoreCase(method) && sp.startsWith("/api/community")) {
-      return true;
-    }
-
     return false;
   }
 
@@ -70,7 +64,6 @@ public class JwtFilter extends OncePerRequestFilter {
   ) throws ServletException, IOException {
 
     String authHeader = request.getHeader("Authorization");
-    System.out.println("[JwtFilter] Authorization raw=[" + authHeader + "]");
 
     if (authHeader == null || authHeader.isBlank()) {
       filterChain.doFilter(request, response);

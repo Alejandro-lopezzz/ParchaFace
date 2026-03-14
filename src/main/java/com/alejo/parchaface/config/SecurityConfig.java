@@ -10,7 +10,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -26,14 +25,9 @@ import java.util.List;
 public class SecurityConfig {
 
   private final JwtFilter jwtFilter;
-  private final AuthenticationEntryPoint authenticationEntryPoint;
 
-  public SecurityConfig(
-    JwtFilter jwtFilter,
-    AuthenticationEntryPoint authenticationEntryPoint
-  ) {
+  public SecurityConfig(JwtFilter jwtFilter) {
     this.jwtFilter = jwtFilter;
-    this.authenticationEntryPoint = authenticationEntryPoint;
   }
 
   @Bean
@@ -46,63 +40,23 @@ public class SecurityConfig {
       .sessionManagement(session ->
         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
       )
-      .exceptionHandling(ex -> ex
-        .authenticationEntryPoint(authenticationEntryPoint)
-      )
       .authorizeHttpRequests(auth -> auth
         .requestMatchers(
-          "/",
-          "/index.html",
-          "/favicon.ico",
-          "/error",
-          "/assets/**",
-          "/uploads/**",
-          "/*.js",
-          "/*.css",
-          "/*.png",
-          "/*.jpg",
-          "/*.jpeg",
-          "/*.svg",
-          "/*.webp",
-          "/*.ico"
-        ).permitAll()
-
-        .requestMatchers(
-          "/community",
-          "/community/**",
-          "/explore",
-          "/explore/**",
-          "/login",
-          "/register",
-          "/perfil",
-          "/perfil/**",
-          "/event-detail",
-          "/event-detail/**"
-        ).permitAll()
-
-        .requestMatchers("/auth/**").permitAll()
-
-        .requestMatchers(
+          "/auth/**",
           "/swagger-ui.html",
           "/swagger-ui/**",
-          "/v3/api-docs/**"
+          "/v3/api-docs/**",
+          "/uploads/**",
+          "/error"
         ).permitAll()
 
-        .requestMatchers(HttpMethod.GET, "/api/community/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/eventos/public/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/eventos/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/comentarios-evento/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/clima/**").permitAll()
-
-        .requestMatchers(HttpMethod.POST, "/api/community/**").authenticated()
-        .requestMatchers(HttpMethod.PUT, "/api/community/**").authenticated()
-        .requestMatchers(HttpMethod.DELETE, "/api/community/**").authenticated()
 
         .requestMatchers("/perfil/**").authenticated()
         .requestMatchers("/inscripciones/**").authenticated()
         .requestMatchers("/notificaciones/**").authenticated()
-        .requestMatchers("/comentarios-evento/**").authenticated()
 
         .requestMatchers(HttpMethod.POST, "/eventos/**").authenticated()
         .requestMatchers(HttpMethod.PUT, "/eventos/**").authenticated()
