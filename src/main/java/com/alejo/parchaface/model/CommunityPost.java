@@ -1,5 +1,6 @@
 package com.alejo.parchaface.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -29,6 +30,7 @@ public class CommunityPost {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "usuario_id", nullable = false)
+  @JsonIgnore
   private Usuario usuario;
 
   @Column(name = "created_at", nullable = false)
