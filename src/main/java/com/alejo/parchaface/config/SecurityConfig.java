@@ -25,87 +25,93 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-  private final JwtFilter jwtFilter;
+    private final JwtFilter jwtFilter;
 
-  public SecurityConfig(JwtFilter jwtFilter) {
-    this.jwtFilter = jwtFilter;
-  }
+    public SecurityConfig(JwtFilter jwtFilter) {
+        this.jwtFilter = jwtFilter;
+    }
 
-  @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-      .cors(Customizer.withDefaults())
-      .csrf(csrf -> csrf.disable())
-      .httpBasic(httpBasic -> httpBasic.disable())
-      .formLogin(form -> form.disable())
-      .sessionManagement(session ->
-        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-      )
-      .authorizeHttpRequests(auth -> auth
-        .requestMatchers(
-          "/",
-          "/community",
-          "/community/**",
-          "/explore",
-          "/login",
-          "/register",
-          "/perfil",
-          "/event-detail/**"
-        ).permitAll()
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(form -> form.disable())
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/",
+                                "/error",
+                                "/auth/**",
+                                "/auth/register",
+                                "/auth/signin",
+                                "/community",
+                                "/community/**",
+                                "/explore",
+                                "/login",
+                                "/register",
+                                "/perfil",
+                                "/api/comentarios-evento/**",
+                                "/event-detail/**"
+                        ).permitAll()
 
-        .requestMatchers(HttpMethod.GET, "/eventos/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/comentarios-evento/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/clima/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/eventos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/eventos/*/comentarios").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comentarios-evento/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/clima/**").permitAll()
 
-        .requestMatchers("/perfil/**").authenticated()
-        .requestMatchers("/inscripciones/**").authenticated()
-        .requestMatchers("/notificaciones/**").authenticated()
+                        .requestMatchers("/perfil/**").authenticated()
+                        .requestMatchers("/inscripciones/**").authenticated()
+                        .requestMatchers("/notificaciones/**").authenticated()
 
-        .requestMatchers(HttpMethod.POST, "/eventos/**").authenticated()
-        .requestMatchers(HttpMethod.PUT, "/eventos/**").authenticated()
-        .requestMatchers(HttpMethod.DELETE, "/eventos/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/eventos/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/eventos/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/eventos/**").authenticated()
 
-        .anyRequest().authenticated()
-      )
-      .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
-    return http.build();
-  }
+        return http.build();
+    }
 
-  @Bean
-  public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration config = new CorsConfiguration();
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
 
-    config.setAllowedOriginPatterns(List.of(
-      "http://localhost:4200",
-      "http://127.0.0.1:4200"
-    ));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:4200",
+                "http://127.0.0.1:4200"
+        ));
 
-    config.setAllowedMethods(Arrays.asList(
-      "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-    ));
+        config.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
 
-    config.setAllowedHeaders(Arrays.asList(
-      "Authorization",
-      "Content-Type",
-      "Accept",
-      "Origin",
-      "X-Requested-With"
-    ));
+        config.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
 
-    config.setExposedHeaders(List.of("Authorization"));
-    config.setAllowCredentials(true);
-    config.setMaxAge(3600L);
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
-    return source;
-  }
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
-  @Bean
-  public AuthenticationManager authenticationManager(
-    AuthenticationConfiguration authenticationConfiguration
-  ) throws Exception {
-    return authenticationConfiguration.getAuthenticationManager();
-  }
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration
+    ) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
 }
