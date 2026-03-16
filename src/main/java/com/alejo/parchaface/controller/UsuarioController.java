@@ -1,6 +1,7 @@
 package com.alejo.parchaface.controller;
 
 import com.alejo.parchaface.dto.PerfilUsuarioDto;
+import com.alejo.parchaface.dto.UsuarioBusquedaDto;
 import com.alejo.parchaface.dto.UsuarioResumenDto;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.repository.UsuarioRepository;
@@ -183,5 +184,19 @@ public class UsuarioController {
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         usuarioService.deleteUsuario(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @GetMapping("/buscar")
+    public ResponseEntity<List<UsuarioBusquedaDto>> buscarUsuarios(
+            @RequestParam("q") String q,
+            Principal principal
+    ) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<UsuarioBusquedaDto> resultados = usuarioService.buscarUsuarios(q, principal.getName());
+        return ResponseEntity.ok(resultados);
     }
 }

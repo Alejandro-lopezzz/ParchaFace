@@ -1,6 +1,7 @@
 package com.alejo.parchaface.service.Impl;
 
 import com.alejo.parchaface.dto.PerfilUsuarioDto;
+import com.alejo.parchaface.dto.UsuarioBusquedaDto;
 import com.alejo.parchaface.dto.UsuarioResumenDto;
 import com.alejo.parchaface.model.Seguimiento;
 import com.alejo.parchaface.model.Usuario;
@@ -189,10 +190,41 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<UsuarioBusquedaDto> buscarUsuarios(String q, String correoUsuarioAutenticado) {
+        if (q == null || q.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String termino = q.trim();
+        Usuario usuarioAutenticado = getUsuarioPorCorreo(correoUsuarioAutenticado);
+
+        List<Usuario> usuarios =
+                usuarioRepository.findTop10ByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCaseAndIdUsuarioNot(
+                        termino,
+                        termino,
+                        usuarioAutenticado.getIdUsuario()
+                );
+
+        return usuarios.stream()
+                .map(this::mapToUsuarioBusquedaDto)
+                .collect(Collectors.toList());
+    }
+
     private UsuarioResumenDto mapToUsuarioResumenDto(Usuario usuario) {
         UsuarioResumenDto dto = new UsuarioResumenDto();
         dto.setIdUsuario(usuario.getIdUsuario());
         dto.setNombre(usuario.getNombre());
+        dto.setFotoPerfil(usuario.getFotoPerfil());
+        dto.setAcercaDe(usuario.getAcercaDe());
+        return dto;
+    }
+
+    private UsuarioBusquedaDto mapToUsuarioBusquedaDto(Usuario usuario) {
+        UsuarioBusquedaDto dto = new UsuarioBusquedaDto();
+        dto.setIdUsuario(usuario.getIdUsuario());
+        dto.setNombre(usuario.getNombre());
+        dto.setCorreo(usuario.getCorreo());
         dto.setFotoPerfil(usuario.getFotoPerfil());
         dto.setAcercaDe(usuario.getAcercaDe());
         return dto;

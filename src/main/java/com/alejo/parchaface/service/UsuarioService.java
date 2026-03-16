@@ -1,8 +1,10 @@
 package com.alejo.parchaface.service;
 
 import com.alejo.parchaface.dto.PerfilUsuarioDto;
+import com.alejo.parchaface.dto.UsuarioBusquedaDto;
 import com.alejo.parchaface.dto.UsuarioResumenDto;
 import com.alejo.parchaface.model.Usuario;
+
 
 import java.util.List;
 
@@ -27,4 +29,6 @@ public interface UsuarioService {
     List<UsuarioResumenDto> obtenerSeguidores(Integer idUsuario);
 
     List<UsuarioResumenDto> obtenerSiguiendo(Integer idUsuario);
+
+    List<UsuarioBusquedaDto> buscarUsuarios(String q, String correoUsuarioAutenticado);
 }
