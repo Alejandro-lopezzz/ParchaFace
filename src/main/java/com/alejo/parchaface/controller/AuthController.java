@@ -17,6 +17,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.alejo.parchaface.dto.GoogleAuthRequest;
+import com.alejo.parchaface.service.GoogleTokenService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import java.util.UUID;
 
 import java.util.List;
 import java.util.Map;
@@ -29,13 +33,16 @@ public class AuthController {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
+    private final GoogleTokenService googleTokenService;
 
     public AuthController(UsuarioRepository usuarioRepository,
                           PasswordEncoder passwordEncoder,
-                          PasswordResetService passwordResetService) {
+                          PasswordResetService passwordResetService,
+                          GoogleTokenService googleTokenService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
+        this.googleTokenService = googleTokenService;
     }
 
     // ✅ REGISTRO
@@ -199,5 +206,70 @@ public class AuthController {
     private boolean esContrasenaFuerte(String pass) {
         if (pass == null) return false;
         return pass.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
+    }
+
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleAuth(@RequestBody GoogleAuthRequest request) {
+        if (request == null || request.credential() == null || request.credential().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Credential requerido"));
+        }
+
+        GoogleIdToken.Payload payload = googleTokenService.verify(request.credential());
+
+        String googleSub = payload.getSubject(); // ESTE es el ID único real
+        String correo = ((String) payload.getEmail()).trim().toLowerCase();
+        String nombre = (String) payload.get("name");
+        Boolean emailVerified = (Boolean) payload.getEmailVerified();
+
+        if (emailVerified == null || !emailVerified) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "El correo de Google no está verificado"));
+        }
+
+        Usuario usuario = usuarioRepository.findByGoogleSub(googleSub).orElseGet(() -> {
+            Optional<Usuario> existentePorCorreo = usuarioRepository.findByCorreo(correo);
+
+            if (existentePorCorreo.isPresent()) {
+                Usuario existente = existentePorCorreo.get();
+
+                // enlaza la cuenta local con Google
+                existente.setGoogleSub(googleSub);
+                existente.setAuthProvider("GOOGLE");
+                return existente;
+            }
+
+            Usuario nuevo = new Usuario();
+            nuevo.setNombre(nombre != null && !nombre.isBlank() ? nombre : correo.split("@")[0]);
+            nuevo.setCorreo(correo);
+            nuevo.setContrasena(passwordEncoder.encode(UUID.randomUUID().toString()));
+            nuevo.setRol(Rol.USUARIO);
+            nuevo.setEstado(Estado.ACTIVO);
+            nuevo.setPreferenciasCompletadas(false);
+            nuevo.setCategoriasPreferidas(List.of());
+            nuevo.setGoogleSub(googleSub);
+            nuevo.setAuthProvider("GOOGLE");
+            return nuevo;
+        });
+
+        usuarioRepository.save(usuario);
+
+        List<String> roles = List.of(usuario.getRol().name());
+
+        String token = JwtUtil.generateToken(
+                usuario.getIdUsuario(),
+                usuario.getCorreo(),
+                roles,
+                usuario.getNombre()
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "tokenType", "Bearer",
+                "token", token,
+                "correo", usuario.getCorreo(),
+                "rol", usuario.getRol().name(),
+                "nombre", usuario.getNombre(),
+                "preferenciasCompletadas", usuario.getPreferenciasCompletadas()
+        ));
     }
 }

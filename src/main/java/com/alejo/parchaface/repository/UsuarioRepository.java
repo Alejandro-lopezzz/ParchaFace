@@ -11,6 +11,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     // Buscar un usuario por su correo (para autenticación JWT)
     Optional<Usuario> findByCorreo(String correo);
 
+<<<<<<< HEAD
     boolean existsByCorreo(String correo);
 
     List<Usuario> findTop10ByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCaseAndIdUsuarioNot(
@@ -19,3 +20,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
             Integer idUsuario
     );
 }
+=======
+    Optional<Usuario> findByGoogleSub(String googleSub);
+}
+>>>>>>> origin/develop
