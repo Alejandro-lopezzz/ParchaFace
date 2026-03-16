@@ -9,4 +9,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     // Buscar un usuario por su correo (para autenticación JWT)
     Optional<Usuario> findByCorreo(String correo);
+
+    Optional<Usuario> findByGoogleSub(String googleSub);
 }

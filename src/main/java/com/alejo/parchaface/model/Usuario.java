@@ -64,6 +64,12 @@ public class Usuario {
     @Column(name = "acerca_de", length = 700)
     private String acercaDe;
 
+    @Column(name = "google_sub", unique = true, length = 100)
+    private String googleSub;
+
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    private String authProvider = "LOCAL";
+
     @ElementCollection(fetch = LAZY)
     @CollectionTable(name = "usuario_redes_sociales", joinColumns = @JoinColumn(name = "id_usuario"))
     private List<RedSocial> redesSociales = new ArrayList<>();
@@ -111,4 +117,12 @@ public class Usuario {
 
     public String getFotoPortada() { return fotoPortada; }
     public void setFotoPortada(String fotoPortada) { this.fotoPortada = fotoPortada; }
+
+    public String getGoogleSub() { return googleSub; }
+    public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
+
+    public String getAuthProvider() { return authProvider; }
+    public void setAuthProvider(String authProvider) { this.authProvider = authProvider; }
+
+
 }
