@@ -25,7 +25,6 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 100)
     private String correo;
 
-    // Nunca debe salir en JSON
     @Column(name = "contrasena", nullable = false)
     @JsonIgnore
     private String contrasena;
@@ -38,7 +37,6 @@ public class Usuario {
     @Column(nullable = false)
     private Estado estado = Estado.ACTIVO;
 
-    // Evita JSON enorme y posibles ciclos al serializar relaciones
     @JsonIgnore
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Inscripcion> inscripciones = new ArrayList<>();
@@ -68,47 +66,145 @@ public class Usuario {
     @CollectionTable(name = "usuario_redes_sociales", joinColumns = @JoinColumn(name = "id_usuario"))
     private List<RedSocial> redesSociales = new ArrayList<>();
 
-    public String getAcercaDe() { return acercaDe; }
-    public void setAcercaDe(String acercaDe) { this.acercaDe = acercaDe; }
+    // =========================
+    // RELACIONES DE SEGUIMIENTO
+    // =========================
 
-    public List<RedSocial> getRedesSociales() { return redesSociales; }
-    public void setRedesSociales(List<RedSocial> redesSociales) {
-      this.redesSociales = redesSociales != null ? redesSociales : new ArrayList<>();
+    // Usuarios a los que YO sigo
+    @JsonIgnore
+    @OneToMany(mappedBy = "seguidor", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Seguimiento> siguiendo = new ArrayList<>();
+
+    // Usuarios que me siguen a MÍ
+    @JsonIgnore
+    @OneToMany(mappedBy = "seguido", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Seguimiento> seguidores = new ArrayList<>();
+
+    public String getAcercaDe() {
+        return acercaDe;
     }
 
-    public Integer getIdUsuario() { return idUsuario; }
-    public void setIdUsuario(Integer idUsuario) { this.idUsuario = idUsuario; }
+    public void setAcercaDe(String acercaDe) {
+        this.acercaDe = acercaDe;
+    }
 
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
+    public List<RedSocial> getRedesSociales() {
+        return redesSociales;
+    }
 
-    public String getCorreo() { return correo; }
-    public void setCorreo(String correo) { this.correo = correo; }
+    public void setRedesSociales(List<RedSocial> redesSociales) {
+        this.redesSociales = redesSociales != null ? redesSociales : new ArrayList<>();
+    }
 
-    public String getContrasena() { return contrasena; }
-    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
+    public Integer getIdUsuario() {
+        return idUsuario;
+    }
 
-    public Rol getRol() { return rol; }
-    public void setRol(Rol rol) { this.rol = rol; }
+    public void setIdUsuario(Integer idUsuario) {
+        this.idUsuario = idUsuario;
+    }
 
-    public Estado getEstado() { return estado; }
-    public void setEstado(Estado estado) { this.estado = estado; }
+    public String getNombre() {
+        return nombre;
+    }
 
-    public List<Inscripcion> getInscripciones() { return inscripciones; }
-    public void setInscripciones(List<Inscripcion> inscripciones) { this.inscripciones = inscripciones; }
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
 
-    public List<Notificacion> getNotificaciones() { return notificaciones; }
-    public void setNotificaciones(List<Notificacion> notificaciones) { this.notificaciones = notificaciones; }
+    public String getCorreo() {
+        return correo;
+    }
 
-    public Boolean getPreferenciasCompletadas() { return preferenciasCompletadas; }
-    public void setPreferenciasCompletadas(Boolean preferenciasCompletadas) { this.preferenciasCompletadas = preferenciasCompletadas != null ? preferenciasCompletadas : false; }
+    public void setCorreo(String correo) {
+        this.correo = correo;
+    }
 
-    public List<String> getCategoriasPreferidas() { return categoriasPreferidas; }
-    public void setCategoriasPreferidas(List<String> categoriasPreferidas) { this.categoriasPreferidas = categoriasPreferidas != null ? categoriasPreferidas : new ArrayList<>(); }
+    public String getContrasena() {
+        return contrasena;
+    }
 
-    public String getFotoPerfil() { return fotoPerfil; }
-    public void setFotoPerfil(String fotoPerfil) { this.fotoPerfil = fotoPerfil; }
+    public void setContrasena(String contrasena) {
+        this.contrasena = contrasena;
+    }
 
-    public String getFotoPortada() { return fotoPortada; }
-    public void setFotoPortada(String fotoPortada) { this.fotoPortada = fotoPortada; }
+    public Rol getRol() {
+        return rol;
+    }
+
+    public void setRol(Rol rol) {
+        this.rol = rol;
+    }
+
+    public Estado getEstado() {
+        return estado;
+    }
+
+    public void setEstado(Estado estado) {
+        this.estado = estado;
+    }
+
+    public List<Inscripcion> getInscripciones() {
+        return inscripciones;
+    }
+
+    public void setInscripciones(List<Inscripcion> inscripciones) {
+        this.inscripciones = inscripciones;
+    }
+
+    public List<Notificacion> getNotificaciones() {
+        return notificaciones;
+    }
+
+    public void setNotificaciones(List<Notificacion> notificaciones) {
+        this.notificaciones = notificaciones;
+    }
+
+    public Boolean getPreferenciasCompletadas() {
+        return preferenciasCompletadas;
+    }
+
+    public void setPreferenciasCompletadas(Boolean preferenciasCompletadas) {
+        this.preferenciasCompletadas = preferenciasCompletadas != null ? preferenciasCompletadas : false;
+    }
+
+    public List<String> getCategoriasPreferidas() {
+        return categoriasPreferidas;
+    }
+
+    public void setCategoriasPreferidas(List<String> categoriasPreferidas) {
+        this.categoriasPreferidas = categoriasPreferidas != null ? categoriasPreferidas : new ArrayList<>();
+    }
+
+    public String getFotoPerfil() {
+        return fotoPerfil;
+    }
+
+    public void setFotoPerfil(String fotoPerfil) {
+        this.fotoPerfil = fotoPerfil;
+    }
+
+    public String getFotoPortada() {
+        return fotoPortada;
+    }
+
+    public void setFotoPortada(String fotoPortada) {
+        this.fotoPortada = fotoPortada;
+    }
+
+    public List<Seguimiento> getSiguiendo() {
+        return siguiendo;
+    }
+
+    public void setSiguiendo(List<Seguimiento> siguiendo) {
+        this.siguiendo = siguiendo != null ? siguiendo : new ArrayList<>();
+    }
+
+    public List<Seguimiento> getSeguidores() {
+        return seguidores;
+    }
+
+    public void setSeguidores(List<Seguimiento> seguidores) {
+        this.seguidores = seguidores != null ? seguidores : new ArrayList<>();
+    }
 }
