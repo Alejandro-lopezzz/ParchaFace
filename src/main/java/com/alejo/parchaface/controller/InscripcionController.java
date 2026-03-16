@@ -59,5 +59,17 @@ public class InscripcionController {
         ));
     }
 
+    @DeleteMapping("/eventos/{idEvento}/cancelar")
+    public ResponseEntity<?> cancelarInscripcion(@PathVariable Integer idEvento, Principal principal) {
+        String correo = principal.getName();
+
+        inscripcionService.cancelarInscripcion(idEvento, correo);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Inscripción cancelada",
+                "idEvento", idEvento
+        ));
+    }
+
 
 }

@@ -16,4 +16,6 @@ public interface InscripcionService {
     Inscripcion inscribirseAEvento(Integer idEvento, String correo);
 
     void deleteInscripcion(Integer id);
+
+    void cancelarInscripcion(Integer idEvento, String correo);
 }

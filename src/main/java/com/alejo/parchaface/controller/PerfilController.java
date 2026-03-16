@@ -3,6 +3,7 @@ package com.alejo.parchaface.controller;
 import com.alejo.parchaface.dto.ProfileActivityItemResponse;
 import com.alejo.parchaface.dto.ProfileEventItemResponse;
 import com.alejo.parchaface.model.*;
+import com.alejo.parchaface.model.enums.EstadoInscripcion;
 import com.alejo.parchaface.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,14 +63,18 @@ public class PerfilController {
   public List<ProfileEventItemResponse> misEventosInscritos(Principal principal) {
     Usuario usuario = getUsuarioActual(principal);
 
-    return inscripcionRepository.findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(usuario.getIdUsuario())
-      .stream()
-      .map(inscripcion -> toProfileEvent(
-        inscripcion.getEvento(),
-        "INSCRITO",
-        inscripcion.getFechaInscripcion()
-      ))
-      .toList();
+    return inscripcionRepository
+            .findByUsuario_IdUsuarioAndEstadoInscripcionOrderByFechaInscripcionDesc(
+                    usuario.getIdUsuario(),
+                    EstadoInscripcion.vigente
+            )
+            .stream()
+            .map(inscripcion -> toProfileEvent(
+                    inscripcion.getEvento(),
+                    "INSCRITO",
+                    inscripcion.getFechaInscripcion()
+            ))
+            .toList();
   }
 
   @GetMapping("/actividad")
@@ -90,7 +95,11 @@ public class PerfilController {
       ));
     }
 
-    for (Inscripcion inscripcion : inscripcionRepository.findByUsuario_IdUsuarioOrderByFechaInscripcionDesc(usuario.getIdUsuario())) {
+    for (Inscripcion inscripcion :
+            inscripcionRepository.findByUsuario_IdUsuarioAndEstadoInscripcionOrderByFechaInscripcionDesc(
+                    usuario.getIdUsuario(),
+                    EstadoInscripcion.vigente
+            )) {
       Evento evento = inscripcion.getEvento();
 
       items.add(new ProfileActivityItemResponse(
