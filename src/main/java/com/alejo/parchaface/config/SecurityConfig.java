@@ -53,16 +53,21 @@ public class SecurityConfig {
                                 "/explore",
                                 "/login",
                                 "/register",
-                                "/perfil",
                                 "/api/comentarios-evento/**",
-                                "/event-detail/**"
+                                "/event-detail/**",
+
+                                // Swagger
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/eventos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/eventos/*/comentarios").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comentarios-evento/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/clima/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/clima/**").permitAll()
 
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/perfil/**").authenticated()
                         .requestMatchers("/inscripciones/**").authenticated()
                         .requestMatchers("/notificaciones/**").authenticated()
