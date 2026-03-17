@@ -18,25 +18,71 @@ public class Notificacion {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String mensaje;
 
-    // ✅ IMPORTANTE: en Java camelCase, en BD snake_case
     @Column(name = "fecha_envio", nullable = false)
     private LocalDateTime fechaEnvio = LocalDateTime.now();
 
     @Column(nullable = false)
     private Boolean leido = false;
 
-    public Integer getId_notificacion() { return id_notificacion; }
-    public void setId_notificacion(Integer id_notificacion) { this.id_notificacion = id_notificacion; }
+    @Column(length = 50)
+    private String tipo;
 
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    @Column(name = "referencia_id")
+    private Integer referenciaId;
 
-    public String getMensaje() { return mensaje; }
-    public void setMensaje(String mensaje) { this.mensaje = mensaje; }
+    public Integer getId_notificacion() {
+        return id_notificacion;
+    }
 
-    public LocalDateTime getFechaEnvio() { return fechaEnvio; }
-    public void setFechaEnvio(LocalDateTime fechaEnvio) { this.fechaEnvio = fechaEnvio; }
+    public void setId_notificacion(Integer id_notificacion) {
+        this.id_notificacion = id_notificacion;
+    }
 
-    public Boolean getLeido() { return leido; }
-    public void setLeido(Boolean leido) { this.leido = leido; }
+    public Usuario getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
+
+    public String getMensaje() {
+        return mensaje;
+    }
+
+    public void setMensaje(String mensaje) {
+        this.mensaje = mensaje;
+    }
+
+    public LocalDateTime getFechaEnvio() {
+        return fechaEnvio;
+    }
+
+    public void setFechaEnvio(LocalDateTime fechaEnvio) {
+        this.fechaEnvio = fechaEnvio;
+    }
+
+    public Boolean getLeido() {
+        return leido;
+    }
+
+    public void setLeido(Boolean leido) {
+        this.leido = leido;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public Integer getReferenciaId() {
+        return referenciaId;
+    }
+
+    public void setReferenciaId(Integer referenciaId) {
+        this.referenciaId = referenciaId;
+    }
 }

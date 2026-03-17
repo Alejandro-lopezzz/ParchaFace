@@ -53,13 +53,23 @@ public class NotificacionServiceImpl implements NotificacionService {
         notificacionRepository.deleteById(id);
     }
 
-    // ====== NUEVO ======
     @Override
     public Notificacion crearNotificacion(Usuario usuario, String mensaje) {
         Notificacion n = new Notificacion();
         n.setUsuario(usuario);
         n.setMensaje(mensaje);
         n.setLeido(false);
+        return notificacionRepository.save(n);
+    }
+
+    @Override
+    public Notificacion crearNotificacionConReferencia(Usuario usuario, String mensaje, String tipo, Integer referenciaId) {
+        Notificacion n = new Notificacion();
+        n.setUsuario(usuario);
+        n.setMensaje(mensaje);
+        n.setLeido(false);
+        n.setTipo(tipo);
+        n.setReferenciaId(referenciaId);
         return notificacionRepository.save(n);
     }
 
