@@ -82,38 +82,43 @@ public class InscripcionServiceImpl implements InscripcionService {
         Evento evento = eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
-        // El organizador no se puede inscribir
         if (evento.getOrganizador() != null
                 && evento.getOrganizador().getIdUsuario() != null
                 && evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El organizador no puede inscribirse a su propio evento");
         }
 
-        // Buscar si ya existe una inscripción previa para este usuario y este evento
         Optional<Inscripcion> existenteOpt = inscripcionRepository
                 .findByEvento_IdEventoAndUsuario_IdUsuario(idEvento, usuario.getIdUsuario());
 
         if (existenteOpt.isPresent()) {
             Inscripcion existente = existenteOpt.get();
 
-            // Si ya está vigente, no dejar duplicar
             if (existente.getEstadoInscripcion() == EstadoInscripcion.vigente) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya estás inscrito en este evento");
             }
 
-            // Si estaba cancelada, reactivarla
             existente.setEstadoInscripcion(EstadoInscripcion.vigente);
             existente.setFechaInscripcion(LocalDate.now());
 
             Inscripcion reactivada = inscripcionRepository.save(existente);
 
-            notificacionService.crearNotificacion(usuario,
-                    "Te inscribiste al evento: " + evento.getTitulo());
+            notificacionService.crearNotificacion(
+                    usuario,
+                    "Te inscribiste al evento: " + evento.getTitulo()
+            );
+
+            if (evento.getOrganizador() != null
+                    && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+                notificacionService.crearNotificacion(
+                        evento.getOrganizador(),
+                        usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo()
+                );
+            }
 
             return reactivada;
         }
 
-        // Validar cupo solo si es una nueva inscripción
         Integer cupo = evento.getCupo();
         long inscritos = inscripcionRepository.countByEvento_IdEventoAndEstadoInscripcion(
                 idEvento,
@@ -124,7 +129,6 @@ public class InscripcionServiceImpl implements InscripcionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El evento ya no tiene cupo");
         }
 
-        // Crear inscripción nueva
         Inscripcion ins = new Inscripcion();
         ins.setUsuario(usuario);
         ins.setEvento(evento);
@@ -133,8 +137,18 @@ public class InscripcionServiceImpl implements InscripcionService {
 
         Inscripcion guardada = inscripcionRepository.save(ins);
 
-        notificacionService.crearNotificacion(usuario,
-                "Te inscribiste al evento: " + evento.getTitulo());
+        notificacionService.crearNotificacion(
+                usuario,
+                "Te inscribiste al evento: " + evento.getTitulo()
+        );
+
+        if (evento.getOrganizador() != null
+                && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+            notificacionService.crearNotificacion(
+                    evento.getOrganizador(),
+                    usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo()
+            );
+        }
 
         return guardada;
     }
@@ -154,13 +168,21 @@ public class InscripcionServiceImpl implements InscripcionService {
                 .findByEvento_IdEventoAndUsuario_IdUsuario(idEvento, usuario.getIdUsuario())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No estás inscrito en este evento"));
 
-        inscripcion.setEstadoInscripcion(EstadoInscripcion.cancelada); // o cancelada, según tu enum actual
+        inscripcion.setEstadoInscripcion(EstadoInscripcion.cancelada);
         inscripcionRepository.save(inscripcion);
 
         notificacionService.crearNotificacion(
                 usuario,
                 "Cancelaste tu inscripción al evento: " + evento.getTitulo()
         );
+
+        if (evento.getOrganizador() != null
+                && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+            notificacionService.crearNotificacion(
+                    evento.getOrganizador(),
+                    usuario.getNombre() + " canceló su inscripción a tu evento: " + evento.getTitulo()
+            );
+        }
     }
 
 
