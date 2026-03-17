@@ -103,16 +103,20 @@ public class InscripcionServiceImpl implements InscripcionService {
 
             Inscripcion reactivada = inscripcionRepository.save(existente);
 
-            notificacionService.crearNotificacion(
+            notificacionService.crearNotificacionConReferencia(
                     usuario,
-                    "Te inscribiste al evento: " + evento.getTitulo()
+                    "Te inscribiste al evento: " + evento.getTitulo(),
+                    "EVENTO",
+                    evento.getIdEvento()
             );
 
             if (evento.getOrganizador() != null
                     && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-                notificacionService.crearNotificacion(
+                notificacionService.crearNotificacionConReferencia(
                         evento.getOrganizador(),
-                        usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo()
+                        usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
+                        "EVENTO",
+                        evento.getIdEvento()
                 );
             }
 
@@ -137,16 +141,20 @@ public class InscripcionServiceImpl implements InscripcionService {
 
         Inscripcion guardada = inscripcionRepository.save(ins);
 
-        notificacionService.crearNotificacion(
+        notificacionService.crearNotificacionConReferencia(
                 usuario,
-                "Te inscribiste al evento: " + evento.getTitulo()
+                "Te inscribiste al evento: " + evento.getTitulo(),
+                "EVENTO",
+                evento.getIdEvento()
         );
 
         if (evento.getOrganizador() != null
                 && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-            notificacionService.crearNotificacion(
+            notificacionService.crearNotificacionConReferencia(
                     evento.getOrganizador(),
-                    usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo()
+                    usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
+                    "EVENTO",
+                    evento.getIdEvento()
             );
         }
 
@@ -171,19 +179,22 @@ public class InscripcionServiceImpl implements InscripcionService {
         inscripcion.setEstadoInscripcion(EstadoInscripcion.cancelada);
         inscripcionRepository.save(inscripcion);
 
-        notificacionService.crearNotificacion(
+        notificacionService.crearNotificacionConReferencia(
                 usuario,
-                "Cancelaste tu inscripción al evento: " + evento.getTitulo()
+                "Cancelaste tu inscripción al evento: " + evento.getTitulo(),
+                "EVENTO",
+                evento.getIdEvento()
         );
 
         if (evento.getOrganizador() != null
                 && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-            notificacionService.crearNotificacion(
+            notificacionService.crearNotificacionConReferencia(
                     evento.getOrganizador(),
-                    usuario.getNombre() + " canceló su inscripción a tu evento: " + evento.getTitulo()
+                    usuario.getNombre() + " canceló su inscripción a tu evento: " + evento.getTitulo(),
+                    "EVENTO",
+                    evento.getIdEvento()
             );
         }
     }
-
 
 }

@@ -426,9 +426,11 @@ public class EventoServiceImpl implements EventoService {
     if (cambioClave) {
       List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
       for (Inscripcion ins : inscripciones) {
-        notificacionService.crearNotificacion(
+        notificacionService.crearNotificacionConReferencia(
                 ins.getUsuario(),
-                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios."
+                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios.",
+                "EVENTO",
+                actualizado.getIdEvento()
         );
       }
     }
@@ -445,9 +447,11 @@ public class EventoServiceImpl implements EventoService {
     List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(idEvento);
 
     for (Inscripcion ins : inscripciones) {
-      notificacionService.crearNotificacion(
+      notificacionService.crearNotificacionConReferencia(
               ins.getUsuario(),
-              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada."
+              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.",
+              "EVENTO_ELIMINADO",
+              evento.getIdEvento()
       );
     }
 

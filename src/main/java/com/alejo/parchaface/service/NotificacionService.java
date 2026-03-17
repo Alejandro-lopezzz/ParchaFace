@@ -7,7 +7,6 @@ import java.util.List;
 
 public interface NotificacionService {
 
-    // ====== lo que ya tenías ======
     Notificacion guardarNotificacion(Notificacion notificacion);
     Notificacion obtenerNotificacionPorId(int id);
     List<Notificacion> obtenerTodas();
@@ -15,8 +14,14 @@ public interface NotificacionService {
     Notificacion actualizarNotificacion(Notificacion notificacion);
     void eliminarNotificacion(int id);
 
-    // ====== NUEVO (para JWT / automático) ======
     Notificacion crearNotificacion(Usuario usuario, String mensaje);
+
+    Notificacion crearNotificacionConReferencia(
+            Usuario usuario,
+            String mensaje,
+            String tipo,
+            Integer referenciaId
+    );
 
     List<Notificacion> obtenerMisNotificaciones(String correo);
 
