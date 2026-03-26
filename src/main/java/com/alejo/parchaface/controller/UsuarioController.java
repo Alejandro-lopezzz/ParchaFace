@@ -12,10 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.*;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/usuarios")
@@ -71,8 +70,6 @@ public class UsuarioController {
         return ResponseEntity.ok("Has dejado de seguir a este usuario");
     }
 
-    // ✅ CORREGIDO: ahora devuelve UsuarioResumenDto
-
     @GetMapping("/{id}/seguidores")
     public ResponseEntity<List<UsuarioResumenDto>> obtenerSeguidores(@PathVariable Integer id) {
         List<UsuarioResumenDto> seguidores = usuarioService.obtenerSeguidores(id);
@@ -126,7 +123,13 @@ public class UsuarioController {
             @PathVariable Integer id,
             @RequestPart("file") MultipartFile file
     ) {
-        return guardarImagen(id, file, true);
+        Usuario actualizado = usuarioService.actualizarFotoPerfil(id, file);
+
+        return ResponseEntity.ok(Map.of(
+                "idUsuario", actualizado.getIdUsuario(),
+                "fotoPerfil", actualizado.getFotoPerfilUrl(),
+                "fotoPerfilPublicId", actualizado.getFotoPerfilPublicId()
+        ));
     }
 
     @PostMapping(value = "/{id}/foto-portada", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -134,50 +137,13 @@ public class UsuarioController {
             @PathVariable Integer id,
             @RequestPart("file") MultipartFile file
     ) {
-        return guardarImagen(id, file, false);
-    }
+        Usuario actualizado = usuarioService.actualizarFotoPortada(id, file);
 
-    private ResponseEntity<?> guardarImagen(Integer id, MultipartFile file, boolean esPerfil) {
-        try {
-            if (file == null || file.isEmpty()) {
-                return ResponseEntity.badRequest().body("El archivo está vacío");
-            }
-
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                return ResponseEntity.badRequest().body("Solo se permiten imágenes");
-            }
-
-            Usuario usuario = usuarioService.getUsuarioById(id);
-            if (usuario == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
-            }
-
-            String original = file.getOriginalFilename() == null ? "imagen" : file.getOriginalFilename();
-            String safeName = original.replaceAll("[^a-zA-Z0-9\\.\\-_]", "_");
-            String nombreArchivo = System.currentTimeMillis() + "_" + safeName;
-
-            Path uploadDir = Paths.get("uploads").toAbsolutePath().normalize();
-            Files.createDirectories(uploadDir);
-
-            Path destino = uploadDir.resolve(nombreArchivo);
-            Files.copy(file.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
-
-            String rutaPublica = "/uploads/" + nombreArchivo;
-
-            if (esPerfil) {
-                usuario.setFotoPerfil(rutaPublica);
-            } else {
-                usuario.setFotoPortada(rutaPublica);
-            }
-
-            Usuario actualizado = usuarioService.saveUsuario(usuario);
-            return ResponseEntity.ok(actualizado);
-
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al subir imagen: " + e.getMessage());
-        }
+        return ResponseEntity.ok(Map.of(
+                "idUsuario", actualizado.getIdUsuario(),
+                "fotoPortada", actualizado.getFotoPortadaUrl(),
+                "fotoPortadaPublicId", actualizado.getFotoPortadaPublicId()
+        ));
     }
 
     @DeleteMapping("/{id}")
@@ -185,7 +151,6 @@ public class UsuarioController {
         usuarioService.deleteUsuario(id);
         return ResponseEntity.noContent().build();
     }
-
 
     @GetMapping("/buscar")
     public ResponseEntity<List<UsuarioBusquedaDto>> buscarUsuarios(

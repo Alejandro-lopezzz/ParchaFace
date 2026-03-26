@@ -10,36 +10,40 @@ import com.alejo.parchaface.repository.EventoCommentRepository;
 import com.alejo.parchaface.repository.EventoRepository;
 import com.alejo.parchaface.repository.UsuarioRepository;
 import com.alejo.parchaface.service.EventoCommentService;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class EventoCommentServiceImpl implements EventoCommentService {
 
-    private static final Path UPLOAD_DIR = Paths.get("uploads", "comentarios");
-    private static final String PUBLIC_URL_PREFIX = "/uploads/comentarios/";
+    private static final String CLOUDINARY_FOLDER_COMENTARIOS = "parchaface/comentarios";
 
     private final EventoCommentRepository commentRepo;
     private final EventoRepository eventoRepo;
     private final UsuarioRepository usuarioRepo;
+    private final Cloudinary cloudinary;
 
-    public EventoCommentServiceImpl(EventoCommentRepository commentRepo,
-                                    EventoRepository eventoRepo,
-                                    UsuarioRepository usuarioRepo) {
+    public EventoCommentServiceImpl(
+            EventoCommentRepository commentRepo,
+            EventoRepository eventoRepo,
+            UsuarioRepository usuarioRepo,
+            Cloudinary cloudinary
+    ) {
         this.commentRepo = commentRepo;
         this.eventoRepo = eventoRepo;
         this.usuarioRepo = usuarioRepo;
+        this.cloudinary = cloudinary;
     }
 
     @Override
@@ -69,16 +73,30 @@ public class EventoCommentServiceImpl implements EventoCommentService {
             throw new RuntimeException("Debes escribir un comentario o adjuntar una imagen");
         }
 
-        EventoComment c = new EventoComment();
-        c.setEvento(evento);
-        c.setUsuario(usuario);
-        c.setContenido(contenido);
+        EventoComment comment = new EventoComment();
+        comment.setEvento(evento);
+        comment.setUsuario(usuario);
+        comment.setContenido(contenido);
 
-        if (tieneImagen) {
-            c.setImagenUrl(saveCommentImageToDisk(imagen).publicUrl());
+        String publicIdSubido = null;
+
+        try {
+            if (tieneImagen) {
+                ImagenCloudinarySubida subida = subirImagenACloudinary(imagen);
+                publicIdSubido = subida.publicId();
+
+                comment.setImagenUrl(subida.secureUrl());
+                comment.setImagenPublicId(subida.publicId());
+            }
+
+            return toResponse(commentRepo.save(comment));
+
+        } catch (RuntimeException e) {
+            if (StringUtils.hasText(publicIdSubido)) {
+                eliminarImagenDeCloudinary(publicIdSubido);
+            }
+            throw e;
         }
-
-        return toResponse(commentRepo.save(c));
     }
 
     @Override
@@ -87,11 +105,17 @@ public class EventoCommentServiceImpl implements EventoCommentService {
         Usuario usuario = usuarioRepo.findByCorreo(correo)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        EventoComment c = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
+        EventoComment comment = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
                 .orElseThrow(() -> new RuntimeException("Comentario no existe o no es tuyo"));
 
-        c.setContenido(request.contenido());
-        return toResponse(commentRepo.save(c));
+        String contenido = request.contenido() == null ? "" : request.contenido().trim();
+
+        if (contenido.isBlank() && !StringUtils.hasText(comment.getImagenUrl())) {
+            throw new RuntimeException("El comentario no puede quedar vacío");
+        }
+
+        comment.setContenido(contenido);
+        return toResponse(commentRepo.save(comment));
     }
 
     @Override
@@ -100,64 +124,78 @@ public class EventoCommentServiceImpl implements EventoCommentService {
         Usuario usuario = usuarioRepo.findByCorreo(correo)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        EventoComment c = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
+        EventoComment comment = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
                 .orElseThrow(() -> new RuntimeException("Comentario no existe o no es tuyo"));
 
-        commentRepo.delete(c);
-    }
+        String publicId = comment.getImagenPublicId();
 
-    private SavedImage saveCommentImageToDisk(MultipartFile file) {
-        try {
-            Files.createDirectories(UPLOAD_DIR);
+        commentRepo.delete(comment);
 
-            String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase().trim();
-            boolean ok = contentType.equals("image/jpeg")
-                    || contentType.equals("image/jpg")
-                    || contentType.equals("image/png")
-                    || contentType.equals("image/webp");
-
-            if (!ok) {
-                throw new IllegalArgumentException("Tipo de imagen no permitido: " + contentType);
-            }
-
-            String originalName = StringUtils.cleanPath(
-                    file.getOriginalFilename() == null ? "" : file.getOriginalFilename()
-            );
-
-            String ext = getExtension(originalName);
-
-            if (ext.isBlank()) {
-                ext = switch (contentType) {
-                    case "image/png" -> "png";
-                    case "image/webp" -> "webp";
-                    default -> "jpg";
-                };
-            }
-
-            String filename = UUID.randomUUID() + "." + ext;
-            Path target = UPLOAD_DIR.resolve(filename).normalize();
-
-            if (!target.startsWith(UPLOAD_DIR.normalize())) {
-                throw new IllegalArgumentException("Ruta inválida para guardar archivo");
-            }
-
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
-            return new SavedImage(PUBLIC_URL_PREFIX + filename);
-
-        } catch (IOException e) {
-            throw new RuntimeException("No se pudo guardar la imagen del comentario", e);
+        if (StringUtils.hasText(publicId)) {
+            eliminarImagenDeCloudinary(publicId);
         }
     }
 
-    private String getExtension(String filename) {
-        if (filename == null) return "";
-        int dot = filename.lastIndexOf('.');
-        if (dot < 0 || dot == filename.length() - 1) return "";
-        return filename.substring(dot + 1).trim().toLowerCase();
+    private ImagenCloudinarySubida subirImagenACloudinary(MultipartFile file) {
+        validarTipoImagen(file);
+
+        try {
+            Map<?, ?> resultado = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", CLOUDINARY_FOLDER_COMENTARIOS,
+                            "resource_type", "image"
+                    )
+            );
+
+            String secureUrl = (String) resultado.get("secure_url");
+            String publicId = (String) resultado.get("public_id");
+
+            if (!StringUtils.hasText(secureUrl) || !StringUtils.hasText(publicId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Cloudinary no devolvió una URL o public_id válidos"
+                );
+            }
+
+            return new ImagenCloudinarySubida(secureUrl, publicId);
+
+        } catch (IOException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "No se pudo subir la imagen del comentario"
+            );
+        }
     }
 
-    private record SavedImage(String publicUrl) {}
+    private void validarTipoImagen(MultipartFile file) {
+        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase().trim();
+
+        boolean permitido =
+                contentType.equals("image/jpeg") ||
+                        contentType.equals("image/jpg") ||
+                        contentType.equals("image/png") ||
+                        contentType.equals("image/webp");
+
+        if (!permitido) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Tipo de imagen no permitido: " + contentType
+            );
+        }
+    }
+
+    private void eliminarImagenDeCloudinary(String publicId) {
+        if (!StringUtils.hasText(publicId)) {
+            return;
+        }
+
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        } catch (Exception ignored) {
+            // No bloquea el flujo si falla el borrado remoto
+        }
+    }
 
     private EventoCommentResponse toResponse(EventoComment c) {
         return new EventoCommentResponse(
@@ -169,5 +207,8 @@ public class EventoCommentServiceImpl implements EventoCommentService {
                 c.getImagenUrl(),
                 c.getCreatedAt()
         );
+    }
+
+    private record ImagenCloudinarySubida(String secureUrl, String publicId) {
     }
 }

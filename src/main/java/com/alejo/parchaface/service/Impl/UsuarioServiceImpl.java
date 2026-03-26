@@ -8,11 +8,15 @@ import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.repository.SeguimientoRepository;
 import com.alejo.parchaface.repository.UsuarioRepository;
 import com.alejo.parchaface.service.UsuarioService;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -21,11 +25,16 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final SeguimientoRepository seguimientoRepository;
+    private final Cloudinary cloudinary;
 
-    public UsuarioServiceImpl(UsuarioRepository usuarioRepository,
-                              SeguimientoRepository seguimientoRepository) {
+    public UsuarioServiceImpl(
+            UsuarioRepository usuarioRepository,
+            SeguimientoRepository seguimientoRepository,
+            Cloudinary cloudinary
+    ) {
         this.usuarioRepository = usuarioRepository;
         this.seguimientoRepository = seguimientoRepository;
+        this.cloudinary = cloudinary;
     }
 
     @Override
@@ -88,8 +97,11 @@ public class UsuarioServiceImpl implements UsuarioService {
         dto.setIdUsuario(usuarioPerfil.getIdUsuario());
         dto.setNombre(usuarioPerfil.getNombre());
         dto.setCorreo(usuarioPerfil.getCorreo());
-        dto.setFotoPerfil(usuarioPerfil.getFotoPerfil());
-        dto.setFotoPortada(usuarioPerfil.getFotoPortada());
+
+        // Mantengo compatibilidad con el frontend actual
+        dto.setFotoPerfil(usuarioPerfil.getFotoPerfilUrl());
+        dto.setFotoPortada(usuarioPerfil.getFotoPortadaUrl());
+
         dto.setAcercaDe(usuarioPerfil.getAcercaDe());
         dto.setCategoriasPreferidas(usuarioPerfil.getCategoriasPreferidas());
         dto.setTotalSeguidores(totalSeguidores);
@@ -211,11 +223,91 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public Usuario actualizarFotoPerfil(Integer idUsuario, MultipartFile file) {
+        return actualizarImagenUsuario(idUsuario, file, true);
+    }
+
+    @Override
+    public Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file) {
+        return actualizarImagenUsuario(idUsuario, file, false);
+    }
+
+    private Usuario actualizarImagenUsuario(Integer idUsuario, MultipartFile file, boolean esPerfil) {
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El archivo está vacío");
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se permiten imágenes");
+            }
+
+            Usuario usuario = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Usuario no encontrado con id: " + idUsuario
+                    ));
+
+            String publicIdAnterior = esPerfil
+                    ? usuario.getFotoPerfilPublicId()
+                    : usuario.getFotoPortadaPublicId();
+
+            if (publicIdAnterior != null && !publicIdAnterior.isBlank()) {
+                cloudinary.uploader().destroy(
+                        publicIdAnterior,
+                        ObjectUtils.asMap("resource_type", "image")
+                );
+            }
+
+            String folder = esPerfil
+                    ? "parchaface/usuarios/perfil"
+                    : "parchaface/usuarios/portada";
+
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", folder,
+                            "resource_type", "image"
+                    )
+            );
+
+            String secureUrl = (String) uploadResult.get("secure_url");
+            String publicId = (String) uploadResult.get("public_id");
+
+            if (secureUrl == null || secureUrl.isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Cloudinary no devolvió una URL válida"
+                );
+            }
+
+            if (esPerfil) {
+                usuario.setFotoPerfilUrl(secureUrl);
+                usuario.setFotoPerfilPublicId(publicId);
+            } else {
+                usuario.setFotoPortadaUrl(secureUrl);
+                usuario.setFotoPortadaPublicId(publicId);
+            }
+
+            return usuarioRepository.save(usuario);
+
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error subiendo imagen a Cloudinary: " + ex.getMessage()
+            );
+        }
+    }
+
     private UsuarioResumenDto mapToUsuarioResumenDto(Usuario usuario) {
         UsuarioResumenDto dto = new UsuarioResumenDto();
         dto.setIdUsuario(usuario.getIdUsuario());
         dto.setNombre(usuario.getNombre());
-        dto.setFotoPerfil(usuario.getFotoPerfil());
+        dto.setFotoPerfil(usuario.getFotoPerfilUrl());
         dto.setAcercaDe(usuario.getAcercaDe());
         return dto;
     }
@@ -225,7 +317,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         dto.setIdUsuario(usuario.getIdUsuario());
         dto.setNombre(usuario.getNombre());
         dto.setCorreo(usuario.getCorreo());
-        dto.setFotoPerfil(usuario.getFotoPerfil());
+        dto.setFotoPerfil(usuario.getFotoPerfilUrl());
         dto.setAcercaDe(usuario.getAcercaDe());
         return dto;
     }
