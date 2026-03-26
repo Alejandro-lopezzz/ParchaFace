@@ -22,7 +22,6 @@ public class EventoCommentController {
         this.service = service;
     }
 
-    // ✅ Listar comentarios de un evento (puede ser público si tu SecurityConfig lo permite)
     @GetMapping("/eventos/{eventoId}/comentarios")
     public Page<EventoCommentResponse> listar(
             @PathVariable Integer eventoId,
@@ -32,8 +31,10 @@ public class EventoCommentController {
         return service.listar(eventoId, page, size);
     }
 
-    // ✅ Crear comentario (requiere login)
-    @PostMapping(value = "/eventos/{eventoId}/comentarios", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(
+            value = "/eventos/{eventoId}/comentarios",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<EventoCommentResponse> crear(
             @PathVariable Integer eventoId,
             @RequestPart(value = "contenido", required = false) String contenido,
@@ -45,7 +46,6 @@ public class EventoCommentController {
         return ResponseEntity.ok(service.crear(eventoId, request, imagen, correo));
     }
 
-    // ✅ Editar comentario (solo el dueño)
     @PutMapping("/comentarios/{commentId}")
     public ResponseEntity<EventoCommentResponse> actualizar(
             @PathVariable Integer commentId,
@@ -56,7 +56,6 @@ public class EventoCommentController {
         return ResponseEntity.ok(service.actualizar(commentId, request, correo));
     }
 
-    // ✅ Eliminar comentario (solo el dueño)
     @DeleteMapping("/comentarios/{commentId}")
     public ResponseEntity<Void> eliminar(
             @PathVariable Integer commentId,

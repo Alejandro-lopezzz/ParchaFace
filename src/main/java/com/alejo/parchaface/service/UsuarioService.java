@@ -4,7 +4,7 @@ import com.alejo.parchaface.dto.PerfilUsuarioDto;
 import com.alejo.parchaface.dto.UsuarioBusquedaDto;
 import com.alejo.parchaface.dto.UsuarioResumenDto;
 import com.alejo.parchaface.model.Usuario;
-
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,4 +31,8 @@ public interface UsuarioService {
     List<UsuarioResumenDto> obtenerSiguiendo(Integer idUsuario);
 
     List<UsuarioBusquedaDto> buscarUsuarios(String q, String correoUsuarioAutenticado);
+
+    Usuario actualizarFotoPerfil(Integer idUsuario, MultipartFile file);
+
+    Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file);
 }
