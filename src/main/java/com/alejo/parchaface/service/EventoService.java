@@ -5,7 +5,6 @@ import com.alejo.parchaface.dto.CrearEventoForm;
 import com.alejo.parchaface.model.Evento;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,11 +22,13 @@ public interface EventoService {
 
     List<Evento> getEventosPublicos();
 
+    // Legacy JSON
     Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
 
-    Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador);
+    // Nuevo flujo multipart/form-data
+    Evento crearEvento(CrearEventoForm form, Usuario organizador);
 
-    Evento crearEvento(CrearEventoForm form, MultipartFile imagenPortada, Usuario organizador, EstadoEvento estado);
+    Evento crearEvento(CrearEventoForm form, Usuario organizador, EstadoEvento estado);
 
     Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
 

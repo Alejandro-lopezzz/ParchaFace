@@ -66,18 +66,25 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/eventos/*/comentarios").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comentarios-evento/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/clima/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/hero-media").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/perfil/**").authenticated()
                         .requestMatchers("/inscripciones/**").authenticated()
                         .requestMatchers("/notificaciones/**").authenticated()
+                        .requestMatchers("/api/pagos/**").authenticated()
+
 
                         .requestMatchers(HttpMethod.POST, "/eventos/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/eventos/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/eventos/**").authenticated()
 
+                        .requestMatchers(HttpMethod.POST, "/api/community/hero-media/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/community/hero-media/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -53,12 +53,6 @@ public class Usuario {
     @Column(name = "categoria")
     private List<String> categoriasPreferidas = new ArrayList<>();
 
-    @Column(name = "foto_perfil")
-    private String fotoPerfil;
-
-    @Column(name = "foto_portada")
-    private String fotoPortada;
-
     @Column(name = "acerca_de", length = 700)
     private String acercaDe;
 
@@ -72,35 +66,25 @@ public class Usuario {
     @CollectionTable(name = "usuario_redes_sociales", joinColumns = @JoinColumn(name = "id_usuario"))
     private List<RedSocial> redesSociales = new ArrayList<>();
 
-    // =========================
-    // RELACIONES DE SEGUIMIENTO
-    // =========================
+    @Column(name = "foto_perfil_url", length = 1000)
+    private String fotoPerfilUrl;
 
-    // Usuarios a los que YO sigo
+    @Column(name = "foto_perfil_public_id", length = 255)
+    private String fotoPerfilPublicId;
+
+    @Column(name = "foto_portada_url", length = 1000)
+    private String fotoPortadaUrl;
+
+    @Column(name = "foto_portada_public_id", length = 255)
+    private String fotoPortadaPublicId;
+
     @JsonIgnore
     @OneToMany(mappedBy = "seguidor", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Seguimiento> siguiendo = new ArrayList<>();
 
-    // Usuarios que me siguen a MÍ
     @JsonIgnore
     @OneToMany(mappedBy = "seguido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Seguimiento> seguidores = new ArrayList<>();
-
-    public String getAcercaDe() {
-        return acercaDe;
-    }
-
-    public void setAcercaDe(String acercaDe) {
-        this.acercaDe = acercaDe;
-    }
-
-    public List<RedSocial> getRedesSociales() {
-        return redesSociales;
-    }
-
-    public void setRedesSociales(List<RedSocial> redesSociales) {
-        this.redesSociales = redesSociales != null ? redesSociales : new ArrayList<>();
-    }
 
     public Integer getIdUsuario() {
         return idUsuario;
@@ -155,7 +139,7 @@ public class Usuario {
     }
 
     public void setInscripciones(List<Inscripcion> inscripciones) {
-        this.inscripciones = inscripciones;
+        this.inscripciones = inscripciones != null ? inscripciones : new ArrayList<>();
     }
 
     public List<Notificacion> getNotificaciones() {
@@ -163,7 +147,7 @@ public class Usuario {
     }
 
     public void setNotificaciones(List<Notificacion> notificaciones) {
-        this.notificaciones = notificaciones;
+        this.notificaciones = notificaciones != null ? notificaciones : new ArrayList<>();
     }
 
     public Boolean getPreferenciasCompletadas() {
@@ -182,20 +166,68 @@ public class Usuario {
         this.categoriasPreferidas = categoriasPreferidas != null ? categoriasPreferidas : new ArrayList<>();
     }
 
-    public String getFotoPerfil() {
-        return fotoPerfil;
+    public String getAcercaDe() {
+        return acercaDe;
     }
 
-    public void setFotoPerfil(String fotoPerfil) {
-        this.fotoPerfil = fotoPerfil;
+    public void setAcercaDe(String acercaDe) {
+        this.acercaDe = acercaDe;
     }
 
-    public String getFotoPortada() {
-        return fotoPortada;
+    public String getGoogleSub() {
+        return googleSub;
     }
 
-    public void setFotoPortada(String fotoPortada) {
-        this.fotoPortada = fotoPortada;
+    public void setGoogleSub(String googleSub) {
+        this.googleSub = googleSub;
+    }
+
+    public String getAuthProvider() {
+        return authProvider;
+    }
+
+    public void setAuthProvider(String authProvider) {
+        this.authProvider = authProvider;
+    }
+
+    public List<RedSocial> getRedesSociales() {
+        return redesSociales;
+    }
+
+    public void setRedesSociales(List<RedSocial> redesSociales) {
+        this.redesSociales = redesSociales != null ? redesSociales : new ArrayList<>();
+    }
+
+    public String getFotoPerfilUrl() {
+        return fotoPerfilUrl;
+    }
+
+    public void setFotoPerfilUrl(String fotoPerfilUrl) {
+        this.fotoPerfilUrl = fotoPerfilUrl;
+    }
+
+    public String getFotoPerfilPublicId() {
+        return fotoPerfilPublicId;
+    }
+
+    public void setFotoPerfilPublicId(String fotoPerfilPublicId) {
+        this.fotoPerfilPublicId = fotoPerfilPublicId;
+    }
+
+    public String getFotoPortadaUrl() {
+        return fotoPortadaUrl;
+    }
+
+    public void setFotoPortadaUrl(String fotoPortadaUrl) {
+        this.fotoPortadaUrl = fotoPortadaUrl;
+    }
+
+    public String getFotoPortadaPublicId() {
+        return fotoPortadaPublicId;
+    }
+
+    public void setFotoPortadaPublicId(String fotoPortadaPublicId) {
+        this.fotoPortadaPublicId = fotoPortadaPublicId;
     }
 
     public List<Seguimiento> getSiguiendo() {
@@ -214,22 +246,20 @@ public class Usuario {
         this.seguidores = seguidores != null ? seguidores : new ArrayList<>();
     }
 
-    public String getGoogleSub() {
-        return googleSub;
+    // Compatibilidad con el frontend/código existente
+    public String getFotoPerfil() {
+        return fotoPerfilUrl;
     }
 
-    public void setGoogleSub(String googleSub) {
-        this.googleSub = googleSub;
+    public void setFotoPerfil(String fotoPerfil) {
+        this.fotoPerfilUrl = fotoPerfil;
     }
 
-    public String getAuthProvider() {
-        return authProvider;
+    public String getFotoPortada() {
+        return fotoPortadaUrl;
     }
 
-    public void setAuthProvider(String authProvider) {
-        this.authProvider = authProvider;
+    public void setFotoPortada(String fotoPortada) {
+        this.fotoPortadaUrl = fotoPortada;
     }
 }
-
-
-
