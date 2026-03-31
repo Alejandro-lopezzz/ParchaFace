@@ -71,11 +71,28 @@ public class InscripcionServiceImpl implements InscripcionService {
         inscripcionRepository.deleteById(id);
     }
 
-    // ✅ NUEVO: Inscripción con JWT
     @Override
     @Transactional
     public Inscripcion inscribirseAEvento(Integer idEvento, String correo) {
+        Evento evento = eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
+        if (Boolean.FALSE.equals(evento.getEventoGratuito())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Este evento requiere pago antes de inscribirte"
+            );
+        }
+
+        return crearOReactivarInscripcion(idEvento, correo, false);
+    }
+
+    @Transactional
+    public Inscripcion confirmarInscripcionPagada(Integer idEvento, String correo) {
+        return crearOReactivarInscripcion(idEvento, correo, true);
+    }
+
+    private Inscripcion crearOReactivarInscripcion(Integer idEvento, String correo, boolean permitirSiYaVigente) {
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
@@ -95,6 +112,9 @@ public class InscripcionServiceImpl implements InscripcionService {
             Inscripcion existente = existenteOpt.get();
 
             if (existente.getEstadoInscripcion() == EstadoInscripcion.vigente) {
+                if (permitirSiYaVigente) {
+                    return existente;
+                }
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya estás inscrito en este evento");
             }
 
@@ -161,7 +181,6 @@ public class InscripcionServiceImpl implements InscripcionService {
         return guardada;
     }
 
-
     @Override
     @Transactional
     public void cancelarInscripcion(Integer idEvento, String correo) {
@@ -196,5 +215,4 @@ public class InscripcionServiceImpl implements InscripcionService {
             );
         }
     }
-
 }

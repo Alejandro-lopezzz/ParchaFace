@@ -72,6 +72,8 @@ public class SecurityConfig {
                         .requestMatchers("/perfil/**").authenticated()
                         .requestMatchers("/inscripciones/**").authenticated()
                         .requestMatchers("/notificaciones/**").authenticated()
+                        .requestMatchers("/api/pagos/**").authenticated()
+
 
                         .requestMatchers(HttpMethod.POST, "/eventos/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/eventos/**").authenticated()
