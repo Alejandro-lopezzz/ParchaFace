@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -121,29 +122,46 @@ public class UsuarioController {
     @PostMapping(value = "/{id}/foto-perfil", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> subirFotoPerfil(
             @PathVariable Integer id,
-            @RequestPart("file") MultipartFile file
+            @RequestParam("file") MultipartFile file
     ) {
         Usuario actualizado = usuarioService.actualizarFotoPerfil(id, file);
 
-        return ResponseEntity.ok(Map.of(
-                "idUsuario", actualizado.getIdUsuario(),
-                "fotoPerfil", actualizado.getFotoPerfilUrl(),
-                "fotoPerfilPublicId", actualizado.getFotoPerfilPublicId()
-        ));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("idUsuario", actualizado.getIdUsuario());
+        response.put("fotoPerfil", actualizado.getFotoPerfilUrl());
+        response.put("fotoPerfilUrl", actualizado.getFotoPerfilUrl());
+        response.put("fotoPerfilPublicId", actualizado.getFotoPerfilPublicId());
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping(value = "/{id}/foto-portada", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> subirFotoPortada(
             @PathVariable Integer id,
-            @RequestPart("file") MultipartFile file
+            @RequestParam("file") MultipartFile file
     ) {
         Usuario actualizado = usuarioService.actualizarFotoPortada(id, file);
 
-        return ResponseEntity.ok(Map.of(
-                "idUsuario", actualizado.getIdUsuario(),
-                "fotoPortada", actualizado.getFotoPortadaUrl(),
-                "fotoPortadaPublicId", actualizado.getFotoPortadaPublicId()
-        ));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("idUsuario", actualizado.getIdUsuario());
+        response.put("fotoPortada", actualizado.getFotoPortadaUrl());
+        response.put("fotoPortadaUrl", actualizado.getFotoPortadaUrl());
+        response.put("fotoPortadaPublicId", actualizado.getFotoPortadaPublicId());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}/foto-perfil")
+    public ResponseEntity<?> eliminarFotoPerfil(@PathVariable Integer id) {
+        Usuario actualizado = usuarioService.eliminarFotoPerfil(id);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("idUsuario", actualizado.getIdUsuario());
+        response.put("fotoPerfil", actualizado.getFotoPerfilUrl());
+        response.put("fotoPerfilUrl", actualizado.getFotoPerfilUrl());
+        response.put("fotoPerfilPublicId", actualizado.getFotoPerfilPublicId());
+
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

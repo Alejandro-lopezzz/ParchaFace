@@ -35,4 +35,6 @@ public interface UsuarioService {
     Usuario actualizarFotoPerfil(Integer idUsuario, MultipartFile file);
 
     Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file);
+
+    Usuario eliminarFotoPerfil(Integer idUsuario);
 }

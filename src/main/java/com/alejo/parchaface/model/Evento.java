@@ -3,6 +3,7 @@ package com.alejo.parchaface.model;
 import com.alejo.parchaface.model.enums.EstadoEvento;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.persistence.Transient;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -153,6 +154,9 @@ public class Evento {
     @JsonIgnore
     @OneToMany(mappedBy = "evento", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Inscripcion> inscripciones = new ArrayList<>();
+
+    @Transient
+    private Long totalInscritos = 0L;
 
     /**
      * Nueva relación: múltiples imágenes por evento (máx 3 por lógica de negocio).
@@ -500,5 +504,13 @@ public class Evento {
 
     public void setRedesSociales(List<EventoRedSocial> redesSociales) {
         this.redesSociales = redesSociales;
+    }
+
+    public Long getTotalInscritos() {
+        return totalInscritos;
+    }
+
+    public void setTotalInscritos(Long totalInscritos) {
+        this.totalInscritos = totalInscritos;
     }
 }

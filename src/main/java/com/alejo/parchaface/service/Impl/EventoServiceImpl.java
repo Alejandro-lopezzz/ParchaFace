@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import com.alejo.parchaface.model.enums.EstadoInscripcion;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -67,7 +68,17 @@ public class EventoServiceImpl implements EventoService {
 
   @Override
   public List<Evento> getEventosPublicos() {
-    return eventoRepository.findByEstadoEvento(EstadoEvento.activo);
+    List<Evento> eventos = eventoRepository.findByEstadoEvento(EstadoEvento.activo);
+
+    for (Evento evento : eventos) {
+      long total = inscripcionRepository.countByEvento_IdEventoAndEstadoInscripcion(
+              evento.getIdEvento(),
+              EstadoInscripcion.vigente
+      );
+      evento.setTotalInscritos(total);
+    }
+
+    return eventos;
   }
 
   @Override

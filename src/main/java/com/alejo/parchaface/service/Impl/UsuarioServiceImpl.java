@@ -321,4 +321,37 @@ public class UsuarioServiceImpl implements UsuarioService {
         dto.setAcercaDe(usuario.getAcercaDe());
         return dto;
     }
+
+    @Override
+    public Usuario eliminarFotoPerfil(Integer idUsuario) {
+        try {
+            Usuario usuario = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Usuario no encontrado con id: " + idUsuario
+                    ));
+
+            String publicIdAnterior = usuario.getFotoPerfilPublicId();
+
+            if (publicIdAnterior != null && !publicIdAnterior.isBlank()) {
+                cloudinary.uploader().destroy(
+                        publicIdAnterior,
+                        ObjectUtils.asMap("resource_type", "image")
+                );
+            }
+
+            usuario.setFotoPerfilUrl(null);
+            usuario.setFotoPerfilPublicId(null);
+
+            return usuarioRepository.save(usuario);
+
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error eliminando foto de perfil: " + ex.getMessage()
+            );
+        }
+    }
 }
