@@ -10,4 +10,5 @@ public interface PostRatingRepository extends JpaRepository<PostRating, Integer>
   Optional<PostRating> findByPostIdAndUserCorreo(Integer postId, String userCorreo);
   List<PostRating> findByPostId(Integer postId);
   long countByPostId(Integer postId);
+  void deleteByPostId(Integer postId);
 }

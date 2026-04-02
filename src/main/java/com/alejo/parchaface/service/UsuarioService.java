@@ -10,31 +10,35 @@ import java.util.List;
 
 public interface UsuarioService {
 
-    List<Usuario> getAllUsuarios();
+  List<Usuario> getAllUsuarios();
 
-    Usuario getUsuarioById(Integer id);
+  Usuario getUsuarioById(Integer id);
 
-    Usuario saveUsuario(Usuario usuario);
+  Usuario saveUsuario(Usuario usuario);
 
-    void deleteUsuario(Integer id);
+  void deleteUsuario(Integer id);
 
-    Usuario getUsuarioPorCorreo(String correo);
+  Usuario suspenderUsuario(Integer id);
 
-    PerfilUsuarioDto getPerfilUsuario(Integer idUsuarioPerfil, String correoUsuarioAutenticado);
+  Usuario activarUsuario(Integer id);
 
-    void seguirUsuario(Integer idUsuarioASeguir, String correoUsuarioAutenticado);
+  Usuario getUsuarioPorCorreo(String correo);
 
-    void dejarDeSeguirUsuario(Integer idUsuarioASeguir, String correoUsuarioAutenticado);
+  PerfilUsuarioDto getPerfilUsuario(Integer idUsuarioPerfil, String correoUsuarioAutenticado);
 
-    List<UsuarioResumenDto> obtenerSeguidores(Integer idUsuario);
+  void seguirUsuario(Integer idUsuarioASeguir, String correoUsuarioAutenticado);
 
-    List<UsuarioResumenDto> obtenerSiguiendo(Integer idUsuario);
+  void dejarDeSeguirUsuario(Integer idUsuarioASeguir, String correoUsuarioAutenticado);
 
-    List<UsuarioBusquedaDto> buscarUsuarios(String q, String correoUsuarioAutenticado);
+  List<UsuarioResumenDto> obtenerSeguidores(Integer idUsuario);
 
-    Usuario actualizarFotoPerfil(Integer idUsuario, MultipartFile file);
+  List<UsuarioResumenDto> obtenerSiguiendo(Integer idUsuario);
 
-    Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file);
+  List<UsuarioBusquedaDto> buscarUsuarios(String q, String correoUsuarioAutenticado);
 
-    Usuario eliminarFotoPerfil(Integer idUsuario);
+  Usuario actualizarFotoPerfil(Integer idUsuario, MultipartFile file);
+
+  Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file);
+
+  Usuario eliminarFotoPerfil(Integer idUsuario);
 }

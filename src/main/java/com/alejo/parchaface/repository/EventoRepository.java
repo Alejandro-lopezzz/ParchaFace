@@ -12,8 +12,12 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
 
   List<Evento> findByEstadoEvento(EstadoEvento estadoEvento);
 
+  List<Evento> findByEstadoEventoOrderByFechaCreacionDesc(EstadoEvento estadoEvento);
+
   List<Evento> findByOrganizador_IdUsuarioOrderByFechaCreacionDesc(Integer idUsuario);
 
   @EntityGraph(attributePaths = { "organizador" })
   Optional<Evento> findWithOrganizadorByIdEvento(Integer idEvento);
+
+  List<Evento> findByOrganizador_IdUsuario(Integer usuarioId);
 }

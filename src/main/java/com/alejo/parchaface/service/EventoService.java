@@ -10,27 +10,33 @@ import java.util.List;
 
 public interface EventoService {
 
-    List<Evento> getAllEventos();
+  List<Evento> getAllEventos();
 
-    Evento getEventoById(Integer id);
+  Evento getEventoById(Integer id);
 
-    Evento saveEvento(Evento evento);
+  Evento saveEvento(Evento evento);
 
-    void deleteEvento(Integer id);
+  void deleteEvento(Integer id);
 
-    List<Evento> getEventosPorEstado(EstadoEvento estadoEvento);
+  List<Evento> getEventosPorEstado(EstadoEvento estadoEvento);
 
-    List<Evento> getEventosPublicos();
+  List<Evento> getEventosPublicos();
 
-    // Legacy JSON
-    Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
+  Evento crearEvento(CrearEventoDTO dto, Usuario organizador);
 
-    // Nuevo flujo multipart/form-data
-    Evento crearEvento(CrearEventoForm form, Usuario organizador);
+  Evento crearEvento(CrearEventoForm form, Usuario organizador);
 
-    Evento crearEvento(CrearEventoForm form, Usuario organizador, EstadoEvento estado);
+  Evento crearEvento(CrearEventoForm form, Usuario organizador, EstadoEvento estado);
 
-    Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+  Evento solicitarCreacionEvento(CrearEventoForm form, Usuario organizador);
 
-    void eliminarEventoYNotificar(Integer idEvento);
+  List<Evento> listarPendientesAprobacion();
+
+  Evento aprobarEvento(Integer idEvento);
+
+  Evento rechazarEvento(Integer idEvento, String motivo);
+
+  Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios);
+
+  void eliminarEventoYNotificar(Integer idEvento);
 }

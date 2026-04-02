@@ -36,4 +36,7 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Intege
           Integer idUsuario,
           EstadoInscripcion estadoInscripcion
   );
+
+  void deleteByUsuario_IdUsuario(Integer usuarioId);
+  void deleteByEvento_IdEvento(Integer eventoId);
 }

@@ -16,4 +16,6 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
     List<Notificacion> findByUsuario_IdUsuarioAndLeidoFalseOrderByFechaEnvioDesc(Integer idUsuario);
 
     long countByUsuario_IdUsuarioAndLeidoFalse(Integer idUsuario);
+
+    void deleteByUsuario_IdUsuario(Integer usuarioId);
 }

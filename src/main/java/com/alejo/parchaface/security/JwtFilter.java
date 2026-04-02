@@ -1,5 +1,8 @@
 package com.alejo.parchaface.security;
 
+import com.alejo.parchaface.model.Usuario;
+import com.alejo.parchaface.model.enums.Estado;
+import com.alejo.parchaface.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +17,12 @@ import java.io.IOException;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
+
+  private final UsuarioRepository usuarioRepository;
+
+  public JwtFilter(UsuarioRepository usuarioRepository) {
+    this.usuarioRepository = usuarioRepository;
+  }
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -95,6 +104,20 @@ public class JwtFilter extends OncePerRequestFilter {
 
     if (SecurityContextHolder.getContext().getAuthentication() == null) {
       String correo = JwtUtil.getCorreoFromToken(token);
+      Usuario usuario = usuarioRepository.findByCorreo(correo).orElse(null);
+
+      if (usuario == null) {
+        SecurityContextHolder.clearContext();
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuario no encontrado");
+        return;
+      }
+
+      if (usuario.getEstado() != Estado.ACTIVO) {
+        SecurityContextHolder.clearContext();
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Tu cuenta está suspendida o inactiva");
+        return;
+      }
+
       var roles = JwtUtil.getRolesFromToken(token);
 
       var authentication =

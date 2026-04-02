@@ -1,5 +1,6 @@
 package com.alejo.parchaface.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -20,6 +21,17 @@ public class CommunityComment {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "usuario_id", nullable = false)
+  @JsonIgnoreProperties({
+    "hibernateLazyInitializer",
+    "handler",
+    "contrasena",
+    "inscripciones",
+    "notificaciones",
+    "siguiendo",
+    "seguidores",
+    "categoriasPreferidas",
+    "redesSociales"
+  })
   private Usuario usuario;
 
   @Column(name = "created_at", nullable = false)

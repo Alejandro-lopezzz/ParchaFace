@@ -9,17 +9,21 @@ import java.util.Optional;
 
 public interface SeguimientoRepository extends JpaRepository<Seguimiento, Integer> {
 
-    boolean existsBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
+  boolean existsBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
 
-    Optional<Seguimiento> findBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
+  Optional<Seguimiento> findBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
 
-    long countBySeguido(Usuario seguido);
+  long countBySeguido(Usuario seguido);
 
-    long countBySeguidor(Usuario seguidor);
+  long countBySeguidor(Usuario seguidor);
 
-    List<Seguimiento> findBySeguido(Usuario seguido);
+  List<Seguimiento> findBySeguido(Usuario seguido);
 
-    List<Seguimiento> findBySeguidor(Usuario seguidor);
+  List<Seguimiento> findBySeguidor(Usuario seguidor);
 
-    void deleteBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
+  void deleteBySeguidorAndSeguido(Usuario seguidor, Usuario seguido);
+
+  void deleteBySeguidor(Usuario seguidor);
+
+  void deleteBySeguido(Usuario seguido);
 }

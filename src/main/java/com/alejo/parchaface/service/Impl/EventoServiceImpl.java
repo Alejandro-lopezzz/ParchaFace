@@ -9,9 +9,12 @@ import com.alejo.parchaface.model.EventoRedSocial;
 import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
+import com.alejo.parchaface.model.enums.EstadoInscripcion;
+import com.alejo.parchaface.model.enums.Rol;
 import com.alejo.parchaface.repository.EventoCommentRepository;
 import com.alejo.parchaface.repository.EventoRepository;
 import com.alejo.parchaface.repository.InscripcionRepository;
+import com.alejo.parchaface.repository.UsuarioRepository;
 import com.alejo.parchaface.service.EventoService;
 import com.alejo.parchaface.service.NotificacionService;
 import com.cloudinary.Cloudinary;
@@ -22,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import com.alejo.parchaface.model.enums.EstadoInscripcion;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -41,6 +43,7 @@ public class EventoServiceImpl implements EventoService {
   private final NotificacionService notificacionService;
   private final EventoCommentRepository eventoCommentRepository;
   private final Cloudinary cloudinary;
+  private final UsuarioRepository usuarioRepository;
 
   private static final String LUGAR_EN_LINEA = "EN LINEA";
   private static final int MAX_IMAGENES = 3;
@@ -48,17 +51,19 @@ public class EventoServiceImpl implements EventoService {
   private static final String CLOUDINARY_FOLDER_EVENTOS = "parchaface/eventos";
 
   public EventoServiceImpl(
-          EventoRepository eventoRepository,
-          InscripcionRepository inscripcionRepository,
-          NotificacionService notificacionService,
-          EventoCommentRepository eventoCommentRepository,
-          Cloudinary cloudinary
+    EventoRepository eventoRepository,
+    InscripcionRepository inscripcionRepository,
+    NotificacionService notificacionService,
+    EventoCommentRepository eventoCommentRepository,
+    Cloudinary cloudinary,
+    UsuarioRepository usuarioRepository
   ) {
     this.eventoRepository = eventoRepository;
     this.inscripcionRepository = inscripcionRepository;
     this.notificacionService = notificacionService;
     this.eventoCommentRepository = eventoCommentRepository;
     this.cloudinary = cloudinary;
+    this.usuarioRepository = usuarioRepository;
   }
 
   @Override
@@ -72,8 +77,8 @@ public class EventoServiceImpl implements EventoService {
 
     for (Evento evento : eventos) {
       long total = inscripcionRepository.countByEvento_IdEventoAndEstadoInscripcion(
-              evento.getIdEvento(),
-              EstadoInscripcion.vigente
+        evento.getIdEvento(),
+        EstadoInscripcion.vigente
       );
       evento.setTotalInscritos(total);
     }
@@ -110,9 +115,6 @@ public class EventoServiceImpl implements EventoService {
     return eventoRepository.findByEstadoEvento(estadoEvento);
   }
 
-  // =========================
-  // CREAR EVENTO — JSON (legacy)
-  // =========================
   @Override
   @Transactional
   public Evento crearEvento(CrearEventoDTO dto, Usuario organizador) {
@@ -126,19 +128,12 @@ public class EventoServiceImpl implements EventoService {
     return eventoRepository.save(evento);
   }
 
-  // =========================
-  // CREAR EVENTO — MULTIPART/FORM-DATA
-  // Publicado/activo
-  // =========================
   @Override
   @Transactional
   public Evento crearEvento(CrearEventoForm form, Usuario organizador) {
     return crearEvento(form, organizador, EstadoEvento.activo);
   }
 
-  // =========================
-  // CREAR EVENTO — MULTIPART/FORM-DATA con estado específico
-  // =========================
   @Override
   @Transactional
   public Evento crearEvento(CrearEventoForm form, Usuario organizador, EstadoEvento estado) {
@@ -164,23 +159,79 @@ public class EventoServiceImpl implements EventoService {
     }
   }
 
+  @Override
+  @Transactional
+  public Evento solicitarCreacionEvento(CrearEventoForm form, Usuario organizador) {
+    Evento evento = crearEvento(form, organizador, EstadoEvento.pendiente_aprobacion);
+
+    for (Usuario admin : usuarioRepository.findByRol(Rol.ADMINISTRADOR)) {
+      notificacionService.crearNotificacionConReferencia(
+        admin,
+        "Nueva solicitud de evento: \"" + evento.getTitulo() + "\". Revísala en el panel administrador.",
+        "ADMIN_EVENTO_PENDIENTE",
+        evento.getIdEvento()
+      );
+    }
+
+    return evento;
+  }
+
+  @Override
+  public List<Evento> listarPendientesAprobacion() {
+    return eventoRepository.findByEstadoEventoOrderByFechaCreacionDesc(EstadoEvento.pendiente_aprobacion);
+  }
+
+  @Override
+  @Transactional
+  public Evento aprobarEvento(Integer idEvento) {
+    Evento evento = eventoRepository.findById(idEvento)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+    evento.setEstadoEvento(EstadoEvento.activo);
+    Evento aprobado = eventoRepository.save(evento);
+
+    notificacionService.crearNotificacionConReferencia(
+      aprobado.getOrganizador(),
+      "Tu evento \"" + aprobado.getTitulo() + "\" fue aprobado y ya está publicado.",
+      "EVENTO",
+      aprobado.getIdEvento()
+    );
+
+    return aprobado;
+  }
+
+  @Override
+  @Transactional
+  public Evento rechazarEvento(Integer idEvento, String motivo) {
+    Evento evento = eventoRepository.findById(idEvento)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+    evento.setEstadoEvento(EstadoEvento.rechazado);
+    Evento rechazado = eventoRepository.save(evento);
+
+    String detalleMotivo = StringUtils.hasText(motivo) ? " Motivo: " + motivo.trim() : "";
+
+    notificacionService.crearNotificacionConReferencia(
+      rechazado.getOrganizador(),
+      "Tu evento \"" + rechazado.getTitulo() + "\" no fue aprobado." + detalleMotivo,
+      "EVENTO_RECHAZADO",
+      rechazado.getIdEvento()
+    );
+
+    return rechazado;
+  }
+
   private void mapearDtoEnEvento(CrearEventoDTO dto, Evento evento) {
-    // Básicos
     evento.setTitulo(dto.getTitulo());
     evento.setDescripcion(dto.getDescripcion());
     evento.setCategoria(dto.getCategoria());
-
-    // Imagen legacy JSON
     evento.setImagenPortadaUrl(dto.getImagenPortadaUrl());
     evento.setImagenPortadaContentType(dto.getImagenPortadaContentType());
     evento.setImagenPortadaPublicId(null);
-
-    // Fecha/hora
     evento.setFecha(LocalDateTime.of(dto.getFecha(), dto.getHoraInicio()));
     evento.setHoraInicio(dto.getHoraInicio());
     evento.setHoraFin(dto.getHoraFin());
 
-    // Modalidad
     boolean enLinea = Boolean.TRUE.equals(dto.getEventoEnLinea());
     evento.setEventoEnLinea(enLinea);
 
@@ -202,40 +253,32 @@ public class EventoServiceImpl implements EventoService {
       evento.setLongitud(dto.getLongitud());
     }
 
-    // Cupo / Precio
     evento.setCupo(dto.getCupo());
 
     boolean gratuito = Boolean.TRUE.equals(dto.getEventoGratuito());
     evento.setEventoGratuito(gratuito);
     evento.setPrecio(gratuito ? null : dto.getPrecio());
 
-    // Contacto
     evento.setEmailContacto(dto.getEmailContacto());
     evento.setTelefonoContacto(dto.getTelefonoContacto());
     evento.setSitioWeb(dto.getSitioWeb());
 
-    // Privacidad
     boolean publico = Boolean.TRUE.equals(dto.getEventoPublico());
     evento.setEventoPublico(publico);
     evento.setDetallePrivado(publico ? null : dto.getDetallePrivado());
 
-    // Config
     evento.setPermitirComentarios(Boolean.TRUE.equals(dto.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(dto.getRecordatoriosAutomaticos()));
   }
 
   private void mapearFormEnEvento(CrearEventoForm form, Evento evento) {
-    // Básicos
     evento.setTitulo(form.getTitulo());
     evento.setDescripcion(form.getDescripcion());
     evento.setCategoria(form.getCategoria());
-
-    // Fecha/hora
     evento.setFecha(LocalDateTime.of(form.getFecha(), form.getHoraInicio()));
     evento.setHoraInicio(form.getHoraInicio());
     evento.setHoraFin(form.getHoraFin());
 
-    // Modalidad
     boolean enLinea = Boolean.TRUE.equals(form.getEventoEnLinea());
     evento.setEventoEnLinea(enLinea);
 
@@ -257,24 +300,20 @@ public class EventoServiceImpl implements EventoService {
       evento.setLongitud(form.getLongitud());
     }
 
-    // Cupo / Precio
     evento.setCupo(form.getCupo());
 
     boolean gratuito = Boolean.TRUE.equals(form.getEventoGratuito());
     evento.setEventoGratuito(gratuito);
     evento.setPrecio(gratuito ? null : form.getPrecio());
 
-    // Contacto
     evento.setEmailContacto(form.getEmailContacto());
     evento.setTelefonoContacto(form.getTelefonoContacto());
     evento.setSitioWeb(form.getSitioWeb());
 
-    // Privacidad
     boolean publico = Boolean.TRUE.equals(form.getEventoPublico());
     evento.setEventoPublico(publico);
     evento.setDetallePrivado(publico ? null : form.getDetallePrivado());
 
-    // Config
     evento.setPermitirComentarios(Boolean.TRUE.equals(form.getPermitirComentarios()));
     evento.setRecordatoriosAutomaticos(Boolean.TRUE.equals(form.getRecordatoriosAutomaticos()));
   }
@@ -299,17 +338,18 @@ public class EventoServiceImpl implements EventoService {
 
     if (cantidad > MAX_IMAGENES) {
       throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "Puedes subir máximo " + MAX_IMAGENES + " imágenes por evento"
+        HttpStatus.BAD_REQUEST,
+        "Puedes subir máximo " + MAX_IMAGENES + " imágenes por evento"
       );
     }
 
-    boolean esBorrador = EstadoEvento.borrador.equals(estado);
+    boolean omiteValidacionMinima = EstadoEvento.borrador.equals(estado)
+      || EstadoEvento.rechazado.equals(estado);
 
-    if (!esBorrador && cantidad < MIN_IMAGENES_PUBLICADO) {
+    if (!omiteValidacionMinima && cantidad < MIN_IMAGENES_PUBLICADO) {
       throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "Debes subir al menos 1 imagen para publicar el evento"
+        HttpStatus.BAD_REQUEST,
+        "Debes subir al menos 1 imagen para publicar el evento"
       );
     }
   }
@@ -375,11 +415,11 @@ public class EventoServiceImpl implements EventoService {
   private ImagenCloudinarySubida subirImagenACloudinary(MultipartFile file) {
     try {
       Map<?, ?> resultado = cloudinary.uploader().upload(
-              file.getBytes(),
-              ObjectUtils.asMap(
-                      "folder", CLOUDINARY_FOLDER_EVENTOS,
-                      "resource_type", "image"
-              )
+        file.getBytes(),
+        ObjectUtils.asMap(
+          "folder", CLOUDINARY_FOLDER_EVENTOS,
+          "resource_type", "image"
+        )
       );
 
       String secureUrl = (String) resultado.get("secure_url");
@@ -388,8 +428,8 @@ public class EventoServiceImpl implements EventoService {
 
       if (!StringUtils.hasText(secureUrl) || !StringUtils.hasText(publicId)) {
         throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Cloudinary no devolvió una URL o public_id válidos"
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          "Cloudinary no devolvió una URL o public_id válidos"
         );
       }
 
@@ -397,8 +437,8 @@ public class EventoServiceImpl implements EventoService {
 
     } catch (IOException e) {
       throw new ResponseStatusException(
-              HttpStatus.INTERNAL_SERVER_ERROR,
-              "No se pudo subir una de las imágenes del evento"
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "No se pudo subir una de las imágenes del evento"
       );
     }
   }
@@ -431,7 +471,6 @@ public class EventoServiceImpl implements EventoService {
     try {
       cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     } catch (Exception ignored) {
-      // Si falla el borrado remoto, no bloqueamos el flujo de negocio.
     }
   }
 
@@ -452,12 +491,12 @@ public class EventoServiceImpl implements EventoService {
   @Transactional
   public Evento actualizarEventoYNotificar(Integer idEvento, Evento cambios) {
     Evento existente = eventoRepository.findById(idEvento)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
     boolean cambioClave =
-            (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
-                    (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
-                    (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
+      (cambios.getTitulo() != null && !cambios.getTitulo().equals(existente.getTitulo())) ||
+        (cambios.getFecha() != null && !cambios.getFecha().equals(existente.getFecha())) ||
+        (cambios.getUbicacion() != null && !cambios.getUbicacion().equals(existente.getUbicacion()));
 
     if (cambios.getTitulo() != null) existente.setTitulo(cambios.getTitulo());
     if (cambios.getDescripcion() != null) existente.setDescripcion(cambios.getDescripcion());
@@ -496,10 +535,10 @@ public class EventoServiceImpl implements EventoService {
       List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(actualizado.getIdEvento());
       for (Inscripcion ins : inscripciones) {
         notificacionService.crearNotificacionConReferencia(
-                ins.getUsuario(),
-                "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios.",
-                "EVENTO",
-                actualizado.getIdEvento()
+          ins.getUsuario(),
+          "El evento \"" + actualizado.getTitulo() + "\" fue actualizado. Revisa los cambios.",
+          "EVENTO",
+          actualizado.getIdEvento()
         );
       }
     }
@@ -511,16 +550,16 @@ public class EventoServiceImpl implements EventoService {
   @Transactional
   public void eliminarEventoYNotificar(Integer idEvento) {
     Evento evento = eventoRepository.findById(idEvento)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 
     List<Inscripcion> inscripciones = inscripcionRepository.findByEvento_IdEvento(idEvento);
 
     for (Inscripcion ins : inscripciones) {
       notificacionService.crearNotificacionConReferencia(
-              ins.getUsuario(),
-              "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.",
-              "EVENTO_ELIMINADO",
-              evento.getIdEvento()
+        ins.getUsuario(),
+        "El evento \"" + evento.getTitulo() + "\" fue eliminado/cancelado. Tu inscripción quedó anulada.",
+        "EVENTO_ELIMINADO",
+        evento.getIdEvento()
       );
     }
 
