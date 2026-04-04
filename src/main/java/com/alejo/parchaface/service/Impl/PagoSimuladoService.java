@@ -42,6 +42,10 @@ public class PagoSimuladoService {
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
+        if (usuario.getRol() == com.alejo.parchaface.model.enums.Rol.ADMINISTRADOR) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El administrador no puede pagar ni inscribirse a eventos");
+        }
+
         Evento evento = eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
 

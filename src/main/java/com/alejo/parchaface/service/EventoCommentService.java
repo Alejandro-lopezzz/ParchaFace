@@ -15,4 +15,6 @@ public interface EventoCommentService {
     EventoCommentResponse actualizar(Integer commentId, UpdateEventoCommentRequest request, String correo);
 
     void eliminar(Integer commentId, String correo);
+
+    void eliminarComentarioEvento(Integer idComentario, String correo, boolean esAdmin);
 }

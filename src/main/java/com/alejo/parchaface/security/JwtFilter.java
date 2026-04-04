@@ -112,9 +112,9 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      if (usuario.getEstado() != Estado.ACTIVO) {
+      if (usuario.getEstado() == Estado.CANCELADO) {
         SecurityContextHolder.clearContext();
-        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Tu cuenta está suspendida o inactiva");
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Esta cuenta ya no se encuentra disponible");
         return;
       }
 

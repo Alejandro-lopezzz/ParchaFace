@@ -19,6 +19,7 @@ import com.alejo.parchaface.repository.UsuarioRepository;
 import com.alejo.parchaface.service.AdminModerationService;
 import com.alejo.parchaface.service.EventoService;
 import com.alejo.parchaface.service.NotificacionService;
+import com.alejo.parchaface.service.UsuarioSuspensionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
   private final CommentLikeRepository commentLikeRepository;
   private final PostRatingRepository postRatingRepository;
   private final NotificacionService notificacionService;
+  private final UsuarioSuspensionService usuarioSuspensionService;
 
   private final EventoRepository eventoRepository;
   private final InscripcionRepository inscripcionRepository;
@@ -54,6 +56,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     CommentLikeRepository commentLikeRepository,
     PostRatingRepository postRatingRepository,
     NotificacionService notificacionService,
+    UsuarioSuspensionService usuarioSuspensionService,
     EventoRepository eventoRepository,
     InscripcionRepository inscripcionRepository,
     NotificacionRepository notificacionRepository,
@@ -68,6 +71,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     this.commentLikeRepository = commentLikeRepository;
     this.postRatingRepository = postRatingRepository;
     this.notificacionService = notificacionService;
+    this.usuarioSuspensionService = usuarioSuspensionService;
     this.eventoRepository = eventoRepository;
     this.inscripcionRepository = inscripcionRepository;
     this.notificacionRepository = notificacionRepository;
@@ -82,6 +86,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
   }
 
   @Override
+  public List<Evento> listarEventos() {
+    return eventoService.getAllEventos();
+  }
+
+  @Override
   public Evento aprobarEvento(Integer idEvento) {
     return eventoService.aprobarEvento(idEvento);
   }
@@ -92,21 +101,39 @@ public class AdminModerationServiceImpl implements AdminModerationService {
   }
 
   @Override
+  @Transactional
+  public void eliminarEvento(Integer idEvento) {
+    Evento evento = eventoService.getEventoById(idEvento);
+    if (evento == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
+    }
+
+    eventoService.eliminarEventoYNotificar(idEvento);
+  }
+
+  @Override
   public List<Usuario> listarUsuarios() {
-    return usuarioRepository.findAll();
+    return usuarioRepository.findAll().stream()
+      .map(usuarioSuspensionService::refrescarEstadoSiSuspensionExpirada)
+      .toList();
   }
 
   @Override
   @Transactional
-  public Usuario suspenderUsuario(Integer idUsuario) {
+  public Usuario suspenderUsuario(Integer idUsuario, String duracion) {
     Usuario usuario = buscarUsuario(idUsuario);
     validarUsuarioAdministrable(usuario);
+
+    var suspensionHasta = usuarioSuspensionService.calcularFechaFin(duracion);
     usuario.setEstado(Estado.SUSPENDIDO);
+    usuario.setSuspensionHasta(suspensionHasta);
+
     Usuario guardado = usuarioRepository.save(usuario);
+    String detalle = usuarioSuspensionService.describirDuracion(duracion, suspensionHasta);
 
     notificacionService.crearNotificacionConReferencia(
       guardado,
-      "Tu cuenta fue suspendida por el administrador.",
+      "Tu cuenta fue suspendida por el administrador " + detalle + ".",
       "USUARIO_SUSPENDIDO",
       guardado.getIdUsuario()
     );
@@ -119,6 +146,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
   public Usuario activarUsuario(Integer idUsuario) {
     Usuario usuario = buscarUsuario(idUsuario);
     usuario.setEstado(Estado.ACTIVO);
+    usuario.setSuspensionHasta(null);
     Usuario guardado = usuarioRepository.save(usuario);
 
     notificacionService.crearNotificacionConReferencia(
@@ -137,7 +165,6 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     Usuario usuario = buscarUsuario(idUsuario);
     validarUsuarioAdministrable(usuario);
 
-    // comentarios de comunidad creados por el usuario
     List<CommunityComment> comentariosUsuario =
       communityCommentRepository.findByUsuario_IdUsuarioOrderByCreatedAtDesc(idUsuario);
 
@@ -146,7 +173,6 @@ public class AdminModerationServiceImpl implements AdminModerationService {
       communityCommentRepository.delete(comment);
     }
 
-    // posts de comunidad creados por el usuario
     List<CommunityPost> posts =
       communityPostRepository.findByUsuario_IdUsuarioOrderByCreatedAtDesc(idUsuario);
 
@@ -163,11 +189,9 @@ public class AdminModerationServiceImpl implements AdminModerationService {
       communityPostRepository.delete(post);
     }
 
-    // inscripciones y notificaciones del usuario
     inscripcionRepository.deleteByUsuario_IdUsuario(idUsuario);
     notificacionRepository.deleteByUsuario_IdUsuario(idUsuario);
 
-    // eventos creados por el usuario
     List<Evento> eventos =
       eventoRepository.findByOrganizador_IdUsuarioOrderByFechaCreacionDesc(idUsuario);
 
@@ -177,11 +201,9 @@ public class AdminModerationServiceImpl implements AdminModerationService {
       eventoRepository.delete(evento);
     }
 
-    // relaciones de seguimiento
     seguimientoRepository.deleteBySeguidor(usuario);
     seguimientoRepository.deleteBySeguido(usuario);
 
-    // borrar usuario físicamente
     usuarioRepository.delete(usuario);
   }
 

@@ -1,5 +1,6 @@
 package com.alejo.parchaface.controller;
 
+import com.alejo.parchaface.dto.SuspenderUsuarioRequest;
 import com.alejo.parchaface.model.CommunityComment;
 import com.alejo.parchaface.model.CommunityPost;
 import com.alejo.parchaface.model.Evento;
@@ -28,6 +29,11 @@ public class AdminController {
     return adminModerationService.listarEventosPendientes();
   }
 
+  @GetMapping("/eventos")
+  public List<Evento> listarEventos() {
+    return adminModerationService.listarEventos();
+  }
+
   @PutMapping("/eventos/{id}/aprobar")
   public ResponseEntity<?> aprobarEvento(@PathVariable Integer id) {
     Evento evento = adminModerationService.aprobarEvento(id);
@@ -40,14 +46,21 @@ public class AdminController {
     return ResponseEntity.ok(Map.of("mensaje", "Evento rechazado", "evento", evento));
   }
 
+  @DeleteMapping("/eventos/{id}")
+  public ResponseEntity<Void> eliminarEvento(@PathVariable Integer id) {
+    adminModerationService.eliminarEvento(id);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping("/usuarios")
   public List<Usuario> listarUsuarios() {
     return adminModerationService.listarUsuarios();
   }
 
   @PutMapping("/usuarios/{id}/suspender")
-  public Usuario suspenderUsuario(@PathVariable Integer id) {
-    return adminModerationService.suspenderUsuario(id);
+  public Usuario suspenderUsuario(@PathVariable Integer id, @RequestBody(required = false) SuspenderUsuarioRequest request) {
+    String duracion = request != null ? request.duracion() : null;
+    return adminModerationService.suspenderUsuario(id, duracion);
   }
 
   @PutMapping("/usuarios/{id}/activar")

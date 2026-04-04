@@ -7,6 +7,7 @@ import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoEvento;
 import com.alejo.parchaface.service.EventoService;
 import com.alejo.parchaface.service.UsuarioService;
+import com.alejo.parchaface.service.UsuarioSuspensionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,10 +26,16 @@ public class EventoController {
 
   private final EventoService eventoService;
   private final UsuarioService usuarioService;
+  private final UsuarioSuspensionService usuarioSuspensionService;
 
-  public EventoController(EventoService eventoService, UsuarioService usuarioService) {
+  public EventoController(
+    EventoService eventoService,
+    UsuarioService usuarioService,
+    UsuarioSuspensionService usuarioSuspensionService
+  ) {
     this.eventoService = eventoService;
     this.usuarioService = usuarioService;
+    this.usuarioSuspensionService = usuarioSuspensionService;
   }
 
   @GetMapping
@@ -82,6 +89,11 @@ public class EventoController {
     Authentication authentication
   ) {
     Usuario organizador = getOrganizador(authentication);
+
+    if (!esAdmin(authentication)) {
+      usuarioSuspensionService.validarNoSuspendidoParaEventosEInscripciones(organizador);
+    }
+
     Evento evento = eventoService.crearEvento(dto, organizador);
     return ResponseEntity.status(HttpStatus.CREATED).body(evento);
   }
@@ -102,6 +114,8 @@ public class EventoController {
       ));
     }
 
+    usuarioSuspensionService.validarNoSuspendidoParaEventosEInscripciones(organizador);
+
     Evento evento = eventoService.solicitarCreacionEvento(form, organizador);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
       "mensaje", "La solicitud de creación de evento fue enviada.",
@@ -117,6 +131,11 @@ public class EventoController {
     Authentication authentication
   ) {
     Usuario organizador = getOrganizador(authentication);
+
+    if (!esAdmin(authentication)) {
+      usuarioSuspensionService.validarNoSuspendidoParaEventosEInscripciones(organizador);
+    }
+
     Evento evento = eventoService.crearEvento(form, organizador, EstadoEvento.borrador);
     return ResponseEntity.status(HttpStatus.CREATED).body(evento);
   }
@@ -128,7 +147,6 @@ public class EventoController {
     @RequestBody Evento cambios,
     Authentication authentication
   ) {
-
     Evento existente = eventoService.getEventoById(id);
     if (existente == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");
@@ -152,7 +170,6 @@ public class EventoController {
   @DeleteMapping("/{id}")
   @PreAuthorize("hasAuthority('USUARIO') or hasAuthority('ADMINISTRADOR')")
   public ResponseEntity<Void> eliminar(@PathVariable Integer id, Authentication authentication) {
-
     Evento existente = eventoService.getEventoById(id);
     if (existente == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado");

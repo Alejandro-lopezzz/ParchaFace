@@ -30,246 +30,241 @@ import java.util.Optional;
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final PasswordResetService passwordResetService;
-    private final GoogleTokenService googleTokenService;
+  private final UsuarioRepository usuarioRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final PasswordResetService passwordResetService;
+  private final GoogleTokenService googleTokenService;
 
-    public AuthController(UsuarioRepository usuarioRepository,
-                          PasswordEncoder passwordEncoder,
-                          PasswordResetService passwordResetService,
-                          GoogleTokenService googleTokenService) {
-        this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.passwordResetService = passwordResetService;
-        this.googleTokenService = googleTokenService;
+  public AuthController(UsuarioRepository usuarioRepository,
+                        PasswordEncoder passwordEncoder,
+                        PasswordResetService passwordResetService,
+                        GoogleTokenService googleTokenService) {
+    this.usuarioRepository = usuarioRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.passwordResetService = passwordResetService;
+    this.googleTokenService = googleTokenService;
+  }
+
+  @PostMapping("/register")
+  public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+
+    String correo = normalizeEmail(request.correo());
+
+    if (correo.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "El correo es obligatorio"));
     }
 
-    // ✅ REGISTRO
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+    if (usuarioRepository.findByCorreo(correo).isPresent()) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "El correo ya existe"));
+    }
 
-        String correo = normalizeEmail(request.correo());
+    if (request.contrasena() == null || !request.contrasena().equals(request.confirmarContrasena())) {
+      return ResponseEntity.badRequest()
+        .body(Map.of("error", "Las contraseñas no coinciden"));
+    }
 
-        if (correo.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "El correo es obligatorio"));
-        }
+    if (!esContrasenaFuerte(request.contrasena())) {
+      return ResponseEntity.badRequest().body(Map.of(
+        "error", "La contraseña debe tener mínimo 8 caracteres e incluir mayúscula, minúscula, número y símbolo."
+      ));
+    }
 
-        if (usuarioRepository.findByCorreo(correo).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "El correo ya existe"));
-        }
+    Usuario usuario = new Usuario();
+    usuario.setNombre(request.usuario());
+    usuario.setCorreo(correo);
+    usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
+    usuario.setRol(Rol.USUARIO);
+    usuario.setEstado(Estado.ACTIVO);
+    usuario.setPreferenciasCompletadas(false);
+    usuario.setCategoriasPreferidas(List.of());
 
-        if (request.contrasena() == null || !request.contrasena().equals(request.confirmarContrasena())) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Las contraseñas no coinciden"));
-        }
+    usuarioRepository.save(usuario);
 
-        // ✅ NUEVO: política de contraseña fuerte en registro
-        if (!esContrasenaFuerte(request.contrasena())) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "La contraseña debe tener mínimo 8 caracteres e incluir mayúscula, minúscula, número y símbolo."
-            ));
-        }
+    return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+      "mensaje", "Usuario registrado",
+      "correo", correo,
+      "rol", usuario.getRol().name(),
+      "preferenciasCompletadas", usuario.getPreferenciasCompletadas(),
+      "categoriasPreferidas", usuario.getCategoriasPreferidas()
+    ));
+  }
 
-        Usuario usuario = new Usuario();
-        usuario.setNombre(request.usuario());
-        usuario.setCorreo(correo);
-        usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
-        usuario.setRol(Rol.USUARIO);
-        usuario.setEstado(Estado.ACTIVO);
-        usuario.setPreferenciasCompletadas(false);
-        usuario.setCategoriasPreferidas(List.of());
+  @PostMapping("/signin")
+  public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
-        usuarioRepository.save(usuario);
+    String correo = normalizeEmail(request.correo());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "mensaje", "Usuario registrado",
-                "correo", correo,
-                "rol", usuario.getRol().name(),
-                "preferenciasCompletadas", usuario.getPreferenciasCompletadas(),
-                "categoriasPreferidas", usuario.getCategoriasPreferidas()
+    Optional<Usuario> optUsuario = usuarioRepository.findByCorreo(correo);
+    if (optUsuario.isEmpty()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", "Credenciales inválidas"));
+    }
+
+    Usuario usuario = optUsuario.get();
+
+    if (usuario.getEstado() == Estado.CANCELADO) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", "Esta cuenta ya no se encuentra disponible"));
+    }
+
+    if (!esContrasenaFuerte(request.contrasena())) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", "Tu contraseña no cumple la política. Restablécela para continuar."));
+    }
+
+    if (!passwordEncoder.matches(request.contrasena(), usuario.getContrasena())) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", "Credenciales inválidas"));
+    }
+
+    List<String> roles = List.of(usuario.getRol().name());
+
+    String token = JwtUtil.generateToken(
+      usuario.getIdUsuario(),
+      usuario.getCorreo(),
+      roles,
+      usuario.getNombre()
+    );
+
+    return ResponseEntity.ok()
+      .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+      .body(Map.of(
+        "tokenType", "Bearer",
+        "token", token,
+        "correo", usuario.getCorreo(),
+        "rol", usuario.getRol().name()
+      ));
+  }
+
+  @PostMapping("/forgot-password")
+  public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+
+    String correo = normalizeEmail(request.getCorreo());
+
+    passwordResetService.enviarCodigo(correo);
+
+    return ResponseEntity.ok(Map.of(
+      "mensaje", "Si el correo existe, se envió un código."
+    ));
+  }
+
+  @PostMapping("/reset-password")
+  public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+
+    String correo = normalizeEmail(request.getCorreo());
+
+    try {
+      String token = passwordResetService.restablecer(
+        correo,
+        request.getCodigo(),
+        request.getNuevaContrasena()
+      );
+
+      return ResponseEntity.ok()
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .body(Map.of(
+          "mensaje", "Contraseña actualizada",
+          "tokenType", "Bearer",
+          "token", token,
+          "correo", correo
         ));
+
+    } catch (RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", ex.getMessage()));
+    }
+  }
+
+  @PostMapping("/verify-reset-code")
+  public ResponseEntity<?> verifyResetCode(@Valid @RequestBody VerifyResetCodeRequest request) {
+
+    String correo = normalizeEmail(request.getCorreo());
+
+    try {
+      passwordResetService.validarCodigo(correo, request.getCodigo());
+      return ResponseEntity.ok(Map.of("mensaje", "Código válido"));
+    } catch (RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", ex.getMessage()));
+    }
+  }
+
+  private String normalizeEmail(String correo) {
+    return correo == null ? "" : correo.trim().toLowerCase();
+  }
+
+  private boolean esContrasenaFuerte(String pass) {
+    if (pass == null) return false;
+    return pass.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
+  }
+
+  @PostMapping("/google")
+  public ResponseEntity<?> googleAuth(@RequestBody GoogleAuthRequest request) {
+    if (request == null || request.credential() == null || request.credential().isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "Credential requerido"));
     }
 
-    // ✅ LOGIN
-    @PostMapping("/signin")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    GoogleIdToken.Payload payload = googleTokenService.verify(request.credential());
 
-        String correo = normalizeEmail(request.correo());
+    String googleSub = payload.getSubject();
+    String correo = ((String) payload.getEmail()).trim().toLowerCase();
+    String nombre = (String) payload.get("name");
+    Boolean emailVerified = (Boolean) payload.getEmailVerified();
 
-        Optional<Usuario> optUsuario = usuarioRepository.findByCorreo(correo);
-        if (optUsuario.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Credenciales inválidas"));
-        }
-
-        Usuario usuario = optUsuario.get();
-
-        if (usuario.getEstado() != Estado.ACTIVO) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Usuario inactivo o bloqueado"));
-        }
-
-        // ✅ NUEVO (opcional): bloquear login si la contraseña NO cumple política
-        // Si no quieres bloquear a usuarios antiguos, elimina este bloque.
-        if (!esContrasenaFuerte(request.contrasena())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Tu contraseña no cumple la política. Restablécela para continuar."));
-        }
-
-        if (!passwordEncoder.matches(request.contrasena(), usuario.getContrasena())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Credenciales inválidas"));
-        }
-
-        List<String> roles = List.of(usuario.getRol().name());
-
-        String token = JwtUtil.generateToken(
-                usuario.getIdUsuario(),
-                usuario.getCorreo(),
-                roles,
-                usuario.getNombre()
-        );
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                .body(Map.of(
-                        "tokenType", "Bearer",
-                        "token", token,
-                        "correo", usuario.getCorreo(),
-                        "rol", usuario.getRol().name()
-                ));
+    if (emailVerified == null || !emailVerified) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", "El correo de Google no está verificado"));
     }
 
-    // ✅ Enviar código (si existe)
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    Usuario usuario = usuarioRepository.findByGoogleSub(googleSub).orElseGet(() -> {
+      Optional<Usuario> existentePorCorreo = usuarioRepository.findByCorreo(correo);
 
-        String correo = normalizeEmail(request.getCorreo());
+      if (existentePorCorreo.isPresent()) {
+        Usuario existente = existentePorCorreo.get();
+        existente.setGoogleSub(googleSub);
+        existente.setAuthProvider("GOOGLE");
+        return existente;
+      }
 
-        // Por seguridad: no revelar si existe o no
-        passwordResetService.enviarCodigo(correo);
+      Usuario nuevo = new Usuario();
+      nuevo.setNombre(nombre != null && !nombre.isBlank() ? nombre : correo.split("@")[0]);
+      nuevo.setCorreo(correo);
+      nuevo.setContrasena(passwordEncoder.encode(UUID.randomUUID().toString()));
+      nuevo.setRol(Rol.USUARIO);
+      nuevo.setEstado(Estado.ACTIVO);
+      nuevo.setGoogleSub(googleSub);
+      nuevo.setAuthProvider("GOOGLE");
+      nuevo.setPreferenciasCompletadas(false);
+      nuevo.setCategoriasPreferidas(List.of());
+      return nuevo;
+    });
 
-        return ResponseEntity.ok(Map.of(
-                "mensaje", "Si el correo existe, se envió un código."
-        ));
+    if (usuario.getEstado() == Estado.CANCELADO) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", "Esta cuenta ya no se encuentra disponible"));
     }
 
-    // ✅ Validar código y actualizar contraseña (retorna token)
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    usuarioRepository.save(usuario);
 
-        String correo = normalizeEmail(request.getCorreo());
+    List<String> roles = List.of(usuario.getRol().name());
+    String token = JwtUtil.generateToken(
+      usuario.getIdUsuario(),
+      usuario.getCorreo(),
+      roles,
+      usuario.getNombre()
+    );
 
-        try {
-            String token = passwordResetService.restablecer(
-                    correo,
-                    request.getCodigo(),
-                    request.getNuevaContrasena()
-            );
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                    .body(Map.of(
-                            "mensaje", "Contraseña actualizada",
-                            "tokenType", "Bearer",
-                            "token", token,
-                            "correo", correo
-                    ));
-
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", ex.getMessage()));
-        }
-    }
-
-    @PostMapping("/verify-reset-code")
-    public ResponseEntity<?> verifyResetCode(@Valid @RequestBody VerifyResetCodeRequest request) {
-
-        String correo = normalizeEmail(request.getCorreo());
-
-        try {
-            passwordResetService.validarCodigo(correo, request.getCodigo());
-            return ResponseEntity.ok(Map.of("mensaje", "Código válido"));
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", ex.getMessage()));
-        }
-    }
-
-    private String normalizeEmail(String correo) {
-        return correo == null ? "" : correo.trim().toLowerCase();
-    }
-
-    // ✅ Helper: política de contraseña fuerte
-    private boolean esContrasenaFuerte(String pass) {
-        if (pass == null) return false;
-        return pass.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
-    }
-
-
-    @PostMapping("/google")
-    public ResponseEntity<?> googleAuth(@RequestBody GoogleAuthRequest request) {
-        if (request == null || request.credential() == null || request.credential().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Credential requerido"));
-        }
-
-        GoogleIdToken.Payload payload = googleTokenService.verify(request.credential());
-
-        String googleSub = payload.getSubject(); // ESTE es el ID único real
-        String correo = ((String) payload.getEmail()).trim().toLowerCase();
-        String nombre = (String) payload.get("name");
-        Boolean emailVerified = (Boolean) payload.getEmailVerified();
-
-        if (emailVerified == null || !emailVerified) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "El correo de Google no está verificado"));
-        }
-
-        Usuario usuario = usuarioRepository.findByGoogleSub(googleSub).orElseGet(() -> {
-            Optional<Usuario> existentePorCorreo = usuarioRepository.findByCorreo(correo);
-
-            if (existentePorCorreo.isPresent()) {
-                Usuario existente = existentePorCorreo.get();
-
-                // enlaza la cuenta local con Google
-                existente.setGoogleSub(googleSub);
-                existente.setAuthProvider("GOOGLE");
-                return existente;
-            }
-
-            Usuario nuevo = new Usuario();
-            nuevo.setNombre(nombre != null && !nombre.isBlank() ? nombre : correo.split("@")[0]);
-            nuevo.setCorreo(correo);
-            nuevo.setContrasena(passwordEncoder.encode(UUID.randomUUID().toString()));
-            nuevo.setRol(Rol.USUARIO);
-            nuevo.setEstado(Estado.ACTIVO);
-            nuevo.setPreferenciasCompletadas(false);
-            nuevo.setCategoriasPreferidas(List.of());
-            nuevo.setGoogleSub(googleSub);
-            nuevo.setAuthProvider("GOOGLE");
-            return nuevo;
-        });
-
-        usuarioRepository.save(usuario);
-
-        List<String> roles = List.of(usuario.getRol().name());
-
-        String token = JwtUtil.generateToken(
-                usuario.getIdUsuario(),
-                usuario.getCorreo(),
-                roles,
-                usuario.getNombre()
-        );
-
-        return ResponseEntity.ok(Map.of(
-                "tokenType", "Bearer",
-                "token", token,
-                "correo", usuario.getCorreo(),
-                "rol", usuario.getRol().name(),
-                "nombre", usuario.getNombre(),
-                "preferenciasCompletadas", usuario.getPreferenciasCompletadas()
-        ));
-    }
+    return ResponseEntity.ok()
+      .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+      .body(Map.of(
+        "tokenType", "Bearer",
+        "token", token,
+        "correo", usuario.getCorreo(),
+        "rol", usuario.getRol().name(),
+        "nombre", usuario.getNombre(),
+        "preferenciasCompletadas", usuario.getPreferenciasCompletadas(),
+        "categoriasPreferidas", usuario.getCategoriasPreferidas()
+      ));
+  }
 }

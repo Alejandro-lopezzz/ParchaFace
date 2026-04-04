@@ -27,188 +27,202 @@ import java.util.Map;
 @Service
 public class EventoCommentServiceImpl implements EventoCommentService {
 
-    private static final String CLOUDINARY_FOLDER_COMENTARIOS = "parchaface/comentarios";
+  private static final String CLOUDINARY_FOLDER_COMENTARIOS = "parchaface/comentarios";
 
-    private final EventoCommentRepository commentRepo;
-    private final EventoRepository eventoRepo;
-    private final UsuarioRepository usuarioRepo;
-    private final Cloudinary cloudinary;
+  private final EventoCommentRepository commentRepo;
+  private final EventoRepository eventoRepo;
+  private final UsuarioRepository usuarioRepo;
+  private final Cloudinary cloudinary;
 
-    public EventoCommentServiceImpl(
-            EventoCommentRepository commentRepo,
-            EventoRepository eventoRepo,
-            UsuarioRepository usuarioRepo,
-            Cloudinary cloudinary
-    ) {
-        this.commentRepo = commentRepo;
-        this.eventoRepo = eventoRepo;
-        this.usuarioRepo = usuarioRepo;
-        this.cloudinary = cloudinary;
+  public EventoCommentServiceImpl(
+    EventoCommentRepository commentRepo,
+    EventoRepository eventoRepo,
+    UsuarioRepository usuarioRepo,
+    Cloudinary cloudinary
+  ) {
+    this.commentRepo = commentRepo;
+    this.eventoRepo = eventoRepo;
+    this.usuarioRepo = usuarioRepo;
+    this.cloudinary = cloudinary;
+  }
+
+  @Override
+  public Page<EventoCommentResponse> listar(Integer eventoId, int page, int size) {
+    return commentRepo
+      .findByEvento_IdEventoOrderByCreatedAtDesc(eventoId, PageRequest.of(page, size))
+      .map(this::toResponse);
+  }
+
+  @Override
+  @Transactional
+  public EventoCommentResponse crear(Integer eventoId, CreateEventoCommentRequest request, MultipartFile imagen, String correo) {
+    Evento evento = eventoRepo.findById(eventoId)
+      .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
+
+    if (Boolean.FALSE.equals(evento.getPermitirComentarios())) {
+      throw new RuntimeException("Este evento no permite comentarios");
     }
 
-    @Override
-    public Page<EventoCommentResponse> listar(Integer eventoId, int page, int size) {
-        return commentRepo
-                .findByEvento_IdEventoOrderByCreatedAtDesc(eventoId, PageRequest.of(page, size))
-                .map(this::toResponse);
+    Usuario usuario = usuarioRepo.findByCorreo(correo)
+      .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+    String contenido = request.contenido() == null ? "" : request.contenido().trim();
+    boolean tieneImagen = imagen != null && !imagen.isEmpty();
+
+    if (contenido.isBlank() && !tieneImagen) {
+      throw new RuntimeException("Debes escribir un comentario o adjuntar una imagen");
     }
 
-    @Override
-    @Transactional
-    public EventoCommentResponse crear(Integer eventoId, CreateEventoCommentRequest request, MultipartFile imagen, String correo) {
-        Evento evento = eventoRepo.findById(eventoId)
-                .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
+    EventoComment comment = new EventoComment();
+    comment.setEvento(evento);
+    comment.setUsuario(usuario);
+    comment.setContenido(contenido);
 
-        if (Boolean.FALSE.equals(evento.getPermitirComentarios())) {
-            throw new RuntimeException("Este evento no permite comentarios");
-        }
+    String publicIdSubido = null;
 
-        Usuario usuario = usuarioRepo.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    try {
+      if (tieneImagen) {
+        ImagenCloudinarySubida subida = subirImagenACloudinary(imagen);
+        publicIdSubido = subida.publicId();
 
-        String contenido = request.contenido() == null ? "" : request.contenido().trim();
-        boolean tieneImagen = imagen != null && !imagen.isEmpty();
+        comment.setImagenUrl(subida.secureUrl());
+        comment.setImagenPublicId(subida.publicId());
+      }
 
-        if (contenido.isBlank() && !tieneImagen) {
-            throw new RuntimeException("Debes escribir un comentario o adjuntar una imagen");
-        }
+      return toResponse(commentRepo.save(comment));
 
-        EventoComment comment = new EventoComment();
-        comment.setEvento(evento);
-        comment.setUsuario(usuario);
-        comment.setContenido(contenido);
+    } catch (RuntimeException e) {
+      if (StringUtils.hasText(publicIdSubido)) {
+        eliminarImagenDeCloudinary(publicIdSubido);
+      }
+      throw e;
+    }
+  }
 
-        String publicIdSubido = null;
+  @Override
+  @Transactional
+  public EventoCommentResponse actualizar(Integer commentId, UpdateEventoCommentRequest request, String correo) {
+    Usuario usuario = usuarioRepo.findByCorreo(correo)
+      .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        try {
-            if (tieneImagen) {
-                ImagenCloudinarySubida subida = subirImagenACloudinary(imagen);
-                publicIdSubido = subida.publicId();
+    EventoComment comment = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
+      .orElseThrow(() -> new RuntimeException("Comentario no existe o no es tuyo"));
 
-                comment.setImagenUrl(subida.secureUrl());
-                comment.setImagenPublicId(subida.publicId());
-            }
+    String contenido = request.contenido() == null ? "" : request.contenido().trim();
 
-            return toResponse(commentRepo.save(comment));
-
-        } catch (RuntimeException e) {
-            if (StringUtils.hasText(publicIdSubido)) {
-                eliminarImagenDeCloudinary(publicIdSubido);
-            }
-            throw e;
-        }
+    if (contenido.isBlank() && !StringUtils.hasText(comment.getImagenUrl())) {
+      throw new RuntimeException("El comentario no puede quedar vacío");
     }
 
-    @Override
-    @Transactional
-    public EventoCommentResponse actualizar(Integer commentId, UpdateEventoCommentRequest request, String correo) {
-        Usuario usuario = usuarioRepo.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    comment.setContenido(contenido);
+    return toResponse(commentRepo.save(comment));
+  }
 
-        EventoComment comment = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
-                .orElseThrow(() -> new RuntimeException("Comentario no existe o no es tuyo"));
+  @Override
+  @Transactional
+  public void eliminar(Integer commentId, String correo) {
+    eliminarComentarioEvento(commentId, correo, false);
+  }
 
-        String contenido = request.contenido() == null ? "" : request.contenido().trim();
+  private ImagenCloudinarySubida subirImagenACloudinary(MultipartFile file) {
+    validarTipoImagen(file);
 
-        if (contenido.isBlank() && !StringUtils.hasText(comment.getImagenUrl())) {
-            throw new RuntimeException("El comentario no puede quedar vacío");
-        }
+    try {
+      Map<?, ?> resultado = cloudinary.uploader().upload(
+        file.getBytes(),
+        ObjectUtils.asMap(
+          "folder", CLOUDINARY_FOLDER_COMENTARIOS,
+          "resource_type", "image"
+        )
+      );
 
-        comment.setContenido(contenido);
-        return toResponse(commentRepo.save(comment));
-    }
+      String secureUrl = (String) resultado.get("secure_url");
+      String publicId = (String) resultado.get("public_id");
 
-    @Override
-    @Transactional
-    public void eliminar(Integer commentId, String correo) {
-        Usuario usuario = usuarioRepo.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        EventoComment comment = commentRepo.findByIdEventoCommentAndUsuario_IdUsuario(commentId, usuario.getIdUsuario())
-                .orElseThrow(() -> new RuntimeException("Comentario no existe o no es tuyo"));
-
-        String publicId = comment.getImagenPublicId();
-
-        commentRepo.delete(comment);
-
-        if (StringUtils.hasText(publicId)) {
-            eliminarImagenDeCloudinary(publicId);
-        }
-    }
-
-    private ImagenCloudinarySubida subirImagenACloudinary(MultipartFile file) {
-        validarTipoImagen(file);
-
-        try {
-            Map<?, ?> resultado = cloudinary.uploader().upload(
-                    file.getBytes(),
-                    ObjectUtils.asMap(
-                            "folder", CLOUDINARY_FOLDER_COMENTARIOS,
-                            "resource_type", "image"
-                    )
-            );
-
-            String secureUrl = (String) resultado.get("secure_url");
-            String publicId = (String) resultado.get("public_id");
-
-            if (!StringUtils.hasText(secureUrl) || !StringUtils.hasText(publicId)) {
-                throw new ResponseStatusException(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Cloudinary no devolvió una URL o public_id válidos"
-                );
-            }
-
-            return new ImagenCloudinarySubida(secureUrl, publicId);
-
-        } catch (IOException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "No se pudo subir la imagen del comentario"
-            );
-        }
-    }
-
-    private void validarTipoImagen(MultipartFile file) {
-        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase().trim();
-
-        boolean permitido =
-                contentType.equals("image/jpeg") ||
-                        contentType.equals("image/jpg") ||
-                        contentType.equals("image/png") ||
-                        contentType.equals("image/webp");
-
-        if (!permitido) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Tipo de imagen no permitido: " + contentType
-            );
-        }
-    }
-
-    private void eliminarImagenDeCloudinary(String publicId) {
-        if (!StringUtils.hasText(publicId)) {
-            return;
-        }
-
-        try {
-            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-        } catch (Exception ignored) {
-            // No bloquea el flujo si falla el borrado remoto
-        }
-    }
-
-    private EventoCommentResponse toResponse(EventoComment c) {
-        return new EventoCommentResponse(
-                c.getIdEventoComment(),
-                c.getEvento().getIdEvento(),
-                c.getUsuario().getIdUsuario(),
-                c.getUsuario().getNombre(),
-                c.getContenido(),
-                c.getImagenUrl(),
-                c.getCreatedAt()
+      if (!StringUtils.hasText(secureUrl) || !StringUtils.hasText(publicId)) {
+        throw new ResponseStatusException(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          "Cloudinary no devolvió una URL o public_id válidos"
         );
+      }
+
+      return new ImagenCloudinarySubida(secureUrl, publicId);
+
+    } catch (IOException e) {
+      throw new ResponseStatusException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "No se pudo subir la imagen del comentario"
+      );
+    }
+  }
+
+  private void validarTipoImagen(MultipartFile file) {
+    String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase().trim();
+
+    boolean permitido =
+      contentType.equals("image/jpeg") ||
+        contentType.equals("image/jpg") ||
+        contentType.equals("image/png") ||
+        contentType.equals("image/webp");
+
+    if (!permitido) {
+      throw new ResponseStatusException(
+        HttpStatus.BAD_REQUEST,
+        "Tipo de imagen no permitido: " + contentType
+      );
+    }
+  }
+
+  private void eliminarImagenDeCloudinary(String publicId) {
+    if (!StringUtils.hasText(publicId)) {
+      return;
     }
 
-    private record ImagenCloudinarySubida(String secureUrl, String publicId) {
+    try {
+      cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+    } catch (Exception ignored) {
+      // No bloquea el flujo si falla el borrado remoto
     }
+  }
+
+  private EventoCommentResponse toResponse(EventoComment c) {
+    return new EventoCommentResponse(
+      c.getIdEventoComment(),
+      c.getEvento().getIdEvento(),
+      c.getUsuario().getIdUsuario(),
+      c.getUsuario().getNombre(),
+      c.getContenido(),
+      c.getImagenUrl(),
+      c.getCreatedAt()
+    );
+  }
+
+  private record ImagenCloudinarySubida(String secureUrl, String publicId) {
+  }
+
+  @Override
+  @Transactional
+  public void eliminarComentarioEvento(Integer idComentario, String correo, boolean esAdmin) {
+    EventoComment comentario = commentRepo.findById(idComentario)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comentario no encontrado"));
+
+    String correoAutor = comentario.getUsuario() != null
+      ? comentario.getUsuario().getCorreo()
+      : null;
+
+    if (!esAdmin && (correoAutor == null || !correoAutor.equalsIgnoreCase(correo))) {
+      throw new ResponseStatusException(
+        HttpStatus.FORBIDDEN,
+        "No tienes permiso para eliminar este comentario"
+      );
+    }
+
+    String publicId = comentario.getImagenPublicId();
+
+    commentRepo.delete(comentario);
+
+    if (StringUtils.hasText(publicId)) {
+      eliminarImagenDeCloudinary(publicId);
+    }
+  }
 }
