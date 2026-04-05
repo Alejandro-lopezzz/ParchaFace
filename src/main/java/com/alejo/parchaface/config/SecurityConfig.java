@@ -82,6 +82,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/community/hero-media/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/community/hero-media/**").authenticated()
 
+                        .requestMatchers(HttpMethod.POST, "/api/assistant/chat").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/assistant/chat").permitAll()
+
                         .anyRequest().authenticated()
                 )
 
