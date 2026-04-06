@@ -4,7 +4,6 @@ import com.alejo.parchaface.dto.AssistantActionDto;
 import com.alejo.parchaface.dto.AssistantOptionDto;
 import com.alejo.parchaface.dto.AssistantRequest;
 import com.alejo.parchaface.dto.AssistantResponse;
-import com.alejo.parchaface.dto.AssistantChatMessageDto;
 import com.alejo.parchaface.dto.ClimaPronosticoDia;
 import com.alejo.parchaface.dto.ClimaResponse;
 import com.alejo.parchaface.dto.RadarPlace;
@@ -103,7 +102,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     mergePageContext(request, memory);
     applyAwaitingAnswer(originalMessage, memory);
     mergeDetectedContext(originalMessage, memory);
-    mergeHistoryContext(request, memory);
 
     if (containsProfanity(normalizedMessage)) {
       return simpleReply("Ese mensaje contiene lenguaje inapropiado. Por favor escríbelo de otra forma para poder ayudarte.");
@@ -116,12 +114,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     Lo que sí puedo hacer es explicarte el paso a paso para que lo hagas tú fácilmente.
                     """.trim());
     }
-
-    AssistantResponse currentEventQuestion = handleCurrentEventQuestion(normalizedMessage, memory);
-    if (currentEventQuestion != null) return currentEventQuestion;
-
-    AssistantResponse resultListFollowUp = handleResultListFollowUp(normalizedMessage, memory);
-    if (resultListFollowUp != null) return resultListFollowUp;
 
     if (memory.mode == GuidedMode.PLAN) {
       return handlePlanFlow(principal, memory);
@@ -216,7 +208,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     }
 
     if (isRouteQuestion(normalizedMessage)) {
-      if (containsAny(normalizedMessage, "comentarios", "comentario", "comments", "comentar") && currentRoute.startsWith("/event/")) {
+      if (containsAny(normalizedMessage, "comentarios", "comentario") && currentRoute.startsWith("/event/")) {
         return new AssistantResponse(
           "Te explico y además te llevo: en el detalle del evento baja un poco y encontrarás la sección de comentarios. Te muevo hasta allí.",
           List.of(new AssistantActionDto("scroll", null, "comments-section", null, null)),
@@ -224,7 +216,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         );
       }
 
-      if (containsAny(normalizedMessage, "community", "comunidad", "discusion", "discusión", "discutir")) {
+      if (containsAny(normalizedMessage, "community", "comunidad", "discusion", "discusión")) {
         return new AssistantResponse(
           "La sección community es el espacio donde puedes ver publicaciones, discusiones e interactuar con la comunidad. Te llevo ahora.",
           List.of(new AssistantActionDto("navigate", ROUTE_COMMUNITY, null, null, null)),
@@ -232,7 +224,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         );
       }
 
-      if (containsAny(normalizedMessage, "perfil", "mi perfil", "profile")) {
+      if (containsAny(normalizedMessage, "perfil", "mi perfil")) {
         return new AssistantResponse(
           "En tu perfil puedes ver tu actividad, tus eventos creados y tus eventos inscritos. Te llevo ahora.",
           List.of(new AssistantActionDto("navigate", ROUTE_PROFILE, null, null, null)),
@@ -240,7 +232,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         );
       }
 
-      if (containsAny(normalizedMessage, "mapa", "map")) {
+      if (containsAny(normalizedMessage, "mapa")) {
         return new AssistantResponse(
           "Te llevo al mapa para que veas los eventos por ubicación.",
           List.of(new AssistantActionDto("navigate", ROUTE_MAP, null, null, null)),
@@ -333,46 +325,45 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     String trimmed = safe(message);
     String normalized = normalize(message);
 
-    if (trimmed.matches("^(hola+|holi+s*|holis|holiss|buenas+|hello+|hi+|hey+|ey+|oe+|epa+|aja+|qlq|klk|que mas|que mas pues|que hubo|quiubo|kiubo|khubo|q hubo|q'hubo|que se dice|como fue|hablalo|hablame|alo+|alooo|buenass|wenas|wena+s*)$")) {
+    if (trimmed.matches("^(hola|holi|buenas|hello|hey|ey|oe|epa|aja|aja|qlq|klk|que mas|que hubo|quiubo|kiubo)$")) {
       return simpleReply("Hola 👋 ¿Qué quieres hacer en ParchaFace? Puedo recomendarte eventos, armarte un plan o llevarte al mapa de eventos.");
     }
 
-    if (trimmed.matches("^(buenos dias|buen dia|buenas tardes|buenas noches|feliz dia|feliz tarde|feliz noche|wenas|wena+s*)$")) {
+    if (trimmed.matches("^(buenos dias|buen dia|buenas tardes|buenas noches|wenas)$")) {
       return simpleReply("Hola 👋 Bienvenido a ParchaFace. Dime qué te gustaría hacer y te ayudo.");
     }
 
     if (containsAny(normalized,
-      "oe y entonces", "oe entonces", "y entonces", "entonces que", "entonces qué",
-      "aja y entonces", "que mas pues", "que hubo pues", "khubo pues", "que se dice",
-      "y bueno", "bueno y entonces", "bueno pues", "ajá y qué", "ajá entonces")) {
+      "oe y entonces", "oe entonces", "y entonces", "entonces que",
+      "aja y entonces", "que mas pues", "que hubo pues")) {
       return simpleReply("Aquí estoy 😄 Dime qué quieres hacer y te ayudo. Por ejemplo: buscar eventos, armarte un plan o llevarte al mapa.");
     }
 
-    if (trimmed.matches("^(mucho gusto|un gusto|encantado|encantada|encantao|encantaa|gustazo|un placer)$")) {
+    if (trimmed.matches("^(mucho gusto|un gusto|encantado|encantada)$")) {
       return simpleReply("Mucho gusto 😄 Yo soy tu asistente de ParchaFace. Cuando quieras te ayudo con eventos, planes o rutas dentro de la app.");
     }
 
-    if (trimmed.matches("^(gracias+|muchas gracias|mil gracias|graciaas|graciass|thanks|thank you|todo bien|todo bn|te lo agradezco|muy amable|bacano gracias)$")) {
+    if (trimmed.matches("^(gracias|muchas gracias|mil gracias|thanks|graciaas)$")) {
       return simpleReply("Con gusto 😄 Si quieres, sigo ayudándote con eventos, planes o rutas dentro de la app.");
     }
 
-    if (trimmed.matches("^(chao|adios|adiós|nos vemos|hasta luego|hasta pronto|bye|byee+|hablamos|la buena|me abro|me fui|nos pillamos|nos pillamo)$")) {
+    if (trimmed.matches("^(chao|adios|nos vemos|hasta luego|bye|hablamos)$")) {
       return simpleReply("Chao 👋 Que te vaya súper. Cuando quieras, vuelves y te ayudo con otro plan o evento.");
     }
 
-    if (trimmed.matches("^(como estas|cómo estás|que tal|qué tal|todo bien|todo bn|todo bien o que|todo bien o qué|melo o no|como vas|cómo vas|que cuentas|qué cuentas|todo sano)$")) {
+    if (trimmed.matches("^(como estas|que tal|todo bien|todo bn|todo bien o que)$")) {
       return simpleReply("Todo bien 😄 Listo para ayudarte con ParchaFace. ¿Qué necesitas?");
     }
 
-    if (trimmed.matches("^(jaja+|jajaja+|jeje+|jiji+|xd+|lol+|jsjs+|ajaj+|xdxd+)$")) {
+    if (trimmed.matches("^(jaja+|jajaja+|jeje+|jiji+|xd+|lol+)$")) {
       return simpleReply("Jajaja 😄 no sé de qué te ríes, pero acá sí te puedo encontrar eventos y planes que te hagan pasar bueno.");
     }
 
-    if (trimmed.matches("^(ok|okay|okey|oki|okis|vale|listo|de una|dale|d1|perfecto|entiendo|hagale|hágale|eso es todo|ya lo dijo|suena bien|me sirve|copiado)$")) {
+    if (trimmed.matches("^(ok|okay|okey|vale|listo|de una|dale|perfecto|entiendo|hagale)$")) {
       return simpleReply("De una 🙌 dime qué necesitas y seguimos.");
     }
 
-    if (trimmed.matches("^(perdon|perdón|disculpa|disculpame|discúlpame|lo siento|sorry|srry)$")) {
+    if (trimmed.matches("^(perdon|disculpa|disculpame)$")) {
       return simpleReply("Tranqui 😄 seguimos. Dime qué necesitas en ParchaFace y te ayudo.");
     }
 
@@ -384,31 +375,28 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       return null;
     }
 
-    if ((containsAny(message, "evento") && containsAny(message, "crear", "publicar", "hacer", "subir", "montar"))
+    if ((containsAny(message, "evento") && containsAny(message, "crear", "publicar", "hacer"))
       || containsAny(message,
       "crear evento", "crear un evento", "publicar evento", "publicar un evento",
       "hacer evento", "hacer un evento", "creo un evento", "como creo un evento",
-      "cómo creo un evento", "como hago un evento", "cómo hago un evento",
-      "como publico un evento", "cómo publico un evento", "como subo un evento",
-      "cómo subo un evento", "como monto un evento", "cómo monto un evento",
-      "como armo un evento", "cómo armo un evento")) {
+      "cómo creo un evento", "como hago un evento", "cómo hago un evento")) {
       return new AssistantResponse(
         """
-                    Claro. Paso a paso para crear un evento en ParchaFace:
+        Claro. Paso a paso para crear un evento en ParchaFace:
 
-                    1. Entra al formulario de crear evento.
-                    2. Escribe el título del evento.
-                    3. Selecciona la categoría.
-                    4. Define si es gratis o de pago.
-                    5. Elige fecha y hora.
-                    6. Agrega ciudad, ubicación y dirección.
-                    7. Revisa la ubicación en el mapa si está disponible.
-                    8. Escribe la descripción y los detalles importantes.
-                    9. Guarda y envía la solicitud.
-                    10. Esa solicitud la revisa el administrador y, si todo está bien, el evento se aprueba y se publica.
+        1. Entra al formulario de crear evento.
+        2. Escribe el título del evento.
+        3. Selecciona la categoría.
+        4. Define si es gratis o de pago.
+        5. Elige fecha y hora.
+        6. Agrega ciudad, ubicación y dirección.
+        7. Revisa la ubicación en el mapa si está disponible.
+        8. Escribe la descripción y los detalles importantes.
+        9. Guarda y envía la solicitud.
+        10. Esa solicitud la revisa el administrador y, si todo está bien, el evento se aprueba y se publica.
 
-                    Si quieres, te llevo ahora mismo al formulario para crear evento.
-                    """.trim(),
+        Si quieres, te llevo ahora mismo al formulario para crear evento.
+        """.trim(),
         List.of(),
         List.of(
           new AssistantOptionDto("go-create-event", "Llévame a crear evento", "llévame a crear evento")
@@ -417,8 +405,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     }
 
     if (containsAny(message, "editar perfil", "editar mi perfil", "como edito mi perfil", "cómo edito mi perfil",
-      "cambiar perfil", "actualizar perfil", "modificar perfil", "cambiar mi foto", "cambiar mis datos",
-      "arreglar mi perfil", "ajustar mi perfil", "editar mis datos", "cambiar la foto de perfil")) {
+      "cambiar perfil", "actualizar perfil", "modificar perfil", "cambiar mi foto", "cambiar mis datos")) {
       return simpleReply("""
                 Paso a paso para editar tu perfil en ParchaFace:
 
@@ -430,7 +417,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "inicio", "pagina principal", "página principal", "home", "pantalla principal", "pantalla de inicio")) {
+    if (containsAny(message, "inicio", "pagina principal", "página principal", "home")) {
       return simpleReply("""
                 Paso a paso para usar la página principal de ParchaFace:
 
@@ -442,7 +429,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "explorar", "buscar eventos", "ver eventos", "eventos disponibles", "explore", "mirar eventos", "vitrinear eventos")) {
+    if (containsAny(message, "explorar", "buscar eventos", "ver eventos", "eventos disponibles")) {
       return simpleReply("""
                 Paso a paso para explorar eventos en ParchaFace:
 
@@ -454,7 +441,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "mapa", "map", "ver mapa", "abrir mapa", "mapita")) {
+    if (containsAny(message, "mapa")) {
       return simpleReply("""
                 Paso a paso para usar el mapa en ParchaFace:
 
@@ -466,7 +453,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "community", "comunidad", "discusiones", "discusion", "discusión", "foro", "publicaciones")) {
+    if (containsAny(message, "community", "comunidad", "discusiones", "discusion", "discusión")) {
       return simpleReply("""
                 Paso a paso para usar community en ParchaFace:
 
@@ -478,7 +465,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "crear publicacion", "crear publicación", "crear post", "publicar en community", "publicar en comunidad", "hacer una publicacion", "hacer una publicación", "subir un post")) {
+    if (containsAny(message, "crear publicacion", "crear publicación", "crear post", "publicar en community")) {
       return simpleReply("""
                 Paso a paso para crear una publicación en community:
 
@@ -490,7 +477,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "inscribirme", "inscribirse", "me inscribo", "me uno a un evento", "unirme a un evento", "entrar a un evento", "registrarme a un evento", "apuntarme a un evento", "meterme a un evento")) {
+    if (containsAny(message, "inscribirme", "inscribirse", "me inscribo", "me uno a un evento", "unirme a un evento", "entrar a un evento")) {
       return simpleReply("""
                 Paso a paso para inscribirte a un evento:
 
@@ -502,7 +489,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "pagar", "comprar entrada", "comprar un evento", "pago de evento", "comprar boleta", "comprar boleto", "pagar una entrada", "hacer el pago", "como pago", "cómo pago")) {
+    if (containsAny(message, "pagar", "comprar entrada", "comprar un evento", "pago de evento")) {
       return simpleReply("""
                 Paso a paso para pagar un evento en ParchaFace:
 
@@ -514,19 +501,19 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "comentario", "comentarios", "comentar", "dejar comentario", "poner comentario", "opinar", "escribir un comentario")) {
+    if (containsAny(message, "comentario", "comentarios", "comentar", "dejar comentario", "poner comentario")) {
       if (currentRoute != null && currentRoute.startsWith("/event/")) {
         return new AssistantResponse(
           """
-                        Paso a paso para comentar en un evento:
+          Paso a paso para comentar en un evento:
 
-                        1. Abre el detalle del evento.
-                        2. Baja hasta la sección de comentarios.
-                        3. Escribe tu comentario.
-                        4. Publica el mensaje.
+          1. Abre el detalle del evento.
+          2. Baja hasta la sección de comentarios.
+          3. Escribe tu comentario.
+          4. Publica el mensaje.
 
-                        Te llevo de una a la sección de comentarios.
-                        """.trim(),
+          Te llevo de una a la sección de comentarios.
+          """.trim(),
           List.of(new AssistantActionDto("scroll", null, "comments-section", null, null)),
           List.of()
         );
@@ -542,7 +529,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "preferencias", "mis gustos", "configurar preferencias", "editar preferencias", "ajustar gustos", "mis intereses")) {
+    if (containsAny(message, "preferencias", "mis gustos", "configurar preferencias", "editar preferencias")) {
       return simpleReply("""
                 Paso a paso para configurar tus preferencias:
 
@@ -553,7 +540,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "login", "iniciar sesion", "iniciar sesión", "loguearme", "entrar a mi cuenta", "acceder")) {
+    if (containsAny(message, "login", "iniciar sesion", "iniciar sesión")) {
       return simpleReply("""
                 Paso a paso para iniciar sesión en ParchaFace:
 
@@ -564,7 +551,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "registrarme", "registro", "crear cuenta", "abrir cuenta", "hacerme una cuenta")) {
+    if (containsAny(message, "registrarme", "registro", "crear cuenta")) {
       return simpleReply("""
                 Paso a paso para registrarte en ParchaFace:
 
@@ -576,7 +563,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 """.trim());
     }
 
-    if (containsAny(message, "olvidé mi contraseña", "olvide mi contraseña", "recuperar contraseña", "cambiar contraseña", "renovar mi contraseña", "restablecer mi contraseña", "se me olvido la clave", "se me olvidó la clave", "olvide la clave", "olvidé la clave")) {
+    if (containsAny(message, "olvidé mi contraseña", "olvide mi contraseña", "recuperar contraseña", "cambiar contraseña")) {
       return simpleReply("""
                 Paso a paso para recuperar tu contraseña:
 
@@ -607,7 +594,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       );
     }
 
-    if (containsAny(message, "perfil", "profile")) {
+    if (containsAny(message, "perfil")) {
       return new AssistantResponse(
         "Te llevo a tu perfil.",
         List.of(new AssistantActionDto("navigate", "/profile", null, null, null)),
@@ -631,7 +618,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       );
     }
 
-    if (containsAny(message, "mapa", "ver mapa", "abrir mapa")) {
+    if (containsAny(message, "mapa", "eventos", "evento", "explorar", "explore", "ver eventos", "planes")) {
       Map<String, Object> query = new ConcurrentHashMap<>();
       if (!isBlank(detectedCity)) {
         query.put("q", detectedCity);
@@ -645,22 +632,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
           ? "Te llevo al mapa con eventos en " + safe(detectedCity) + "."
           : "Te llevo al mapa de eventos.",
         List.of(new AssistantActionDto("navigate", "/mapa", null, null, query.isEmpty() ? null : query)),
-        List.of()
-      );
-    }
-
-    if (containsAny(message, "explorar", "explore", "ver eventos", "listado de eventos", "inicio de eventos")) {
-      Map<String, Object> query = new ConcurrentHashMap<>();
-      if (!isBlank(detectedCity)) {
-        query.put("q", detectedCity);
-      }
-      if (!isBlank(detectedCategory)) {
-        query.put("category", detectedCategory);
-      }
-
-      return new AssistantResponse(
-        "Te llevo a explorar eventos.",
-        List.of(new AssistantActionDto("navigate", "/explore", null, null, query.isEmpty() ? null : query)),
         List.of()
       );
     }
@@ -723,7 +694,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     List<Evento> exactResults = searchStrictEvents(memory, principal);
     if (!exactResults.isEmpty()) {
-      List<AssistantOptionDto> options = buildOptions(exactResults, memory, 5);
+      List<AssistantOptionDto> options = exactResults.stream()
+        .limit(5)
+        .map(event -> toOption(event, memory))
+        .toList();
 
       String reply;
       if (fromPreferences && canUseLocationOnly) {
@@ -741,7 +715,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     List<Evento> similarResults = findAlternativeEvents(memory, principal);
     if (!similarResults.isEmpty()) {
-      List<AssistantOptionDto> options = buildOptions(similarResults, memory, 5);
+      List<AssistantOptionDto> options = similarResults.stream()
+        .limit(5)
+        .map(event -> toOption(event, memory))
+        .toList();
 
       rememberDiscoveryContext(memory, fromPreferences ? DiscoveryContext.PREFERENCES : DiscoveryContext.SEARCH);
 
@@ -817,8 +794,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         "¿Quieres que incluya transporte en el plan?",
         List.of(),
         List.of(
-          new AssistantOptionDto("transport-si", "Sí, inclúyelo", "sí, necesito transporte"),
-          new AssistantOptionDto("transport-no", "No, sin transporte", "no, no necesito transporte")
+          new AssistantOptionDto("transport-si", "Sí, inclúyelo", "sí necesito transporte"),
+          new AssistantOptionDto("transport-no", "No, sin transporte", "no necesito transporte")
         )
       );
     }
@@ -829,7 +806,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         "¿Quieres que también te sugiera lugares para comer antes o después del evento?",
         List.of(),
         List.of(
-          new AssistantOptionDto("food-si", "Sí, con comida cerca", "sí quiero lugares cercanos para comer"),
+          new AssistantOptionDto("food-si", "Sí, con comida cerca", "sí quiero lugares para comer"),
           new AssistantOptionDto("food-no", "No, sin comida", "no quiero comida")
         )
       );
@@ -842,7 +819,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       ClimaResponse weather = getWeather(mainEvent.getCiudad());
 
       String plan = buildPlanReply(mainEvent, nearbyPlaces, weather, memory);
-      List<AssistantOptionDto> options = buildOptions(exactResults, memory, 3);
+      List<AssistantOptionDto> options = exactResults.stream()
+        .limit(3)
+        .map(event -> toOption(event, memory))
+        .toList();
 
       rememberDiscoveryContext(memory, DiscoveryContext.PLAN);
       memory.resetGuided();
@@ -856,7 +836,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       ClimaResponse weather = getWeather(mainEvent.getCiudad());
 
       String plan = buildPlanReply(mainEvent, nearbyPlaces, weather, memory);
-      List<AssistantOptionDto> options = buildOptions(similarResults, memory, 3);
+      List<AssistantOptionDto> options = similarResults.stream()
+        .limit(3)
+        .map(event -> toOption(event, memory))
+        .toList();
 
       rememberDiscoveryContext(memory, DiscoveryContext.PLAN);
       memory.resetGuided();
@@ -1008,10 +991,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       return null;
     }
 
-    if (!isBlank(detectCategory(originalMessage))) {
-      return null;
-    }
-
     String topicReference = extractSpecificTopicReference(originalMessage);
     if (isBlank(topicReference) || !isSpecificTopicEventIntent(normalizedMessage)) {
       return null;
@@ -1030,7 +1009,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       return simpleReply("No encontré eventos relacionados con \"" + safe(topicReference) + "\"" + cityText + " en este momento.");
     }
 
-    List<AssistantOptionDto> options = buildOptions(results, memory, 5);
+    List<AssistantOptionDto> options = results.stream()
+      .limit(5)
+      .map(event -> toOption(event, memory))
+      .toList();
 
     Evento top = results.get(0);
     String cityText = !isBlank(top.getCiudad()) ? " en " + safe(top.getCiudad()) : "";
@@ -1080,7 +1062,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       List<Evento> results = searchEventsByReference(memory.lastTopicQuery, memory);
 
       if (!results.isEmpty()) {
-        List<AssistantOptionDto> options = buildOptions(results, memory, 5);
+        List<AssistantOptionDto> options = results.stream()
+          .limit(5)
+          .map(event -> toOption(event, memory))
+          .toList();
 
         Evento top = results.get(0);
         rememberDiscoveryContext(memory, DiscoveryContext.AVAILABILITY);
@@ -1147,7 +1132,9 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     }
 
     String joinedCities = String.join(" o ", cities);
-    List<AssistantOptionDto> options = buildOptions(results, memory, 6);
+    List<AssistantOptionDto> options = results.stream()
+      .map(event -> toOption(event, memory))
+      .toList();
 
     rememberDiscoveryContext(memory, DiscoveryContext.AVAILABILITY);
     return new AssistantResponse(
@@ -1165,9 +1152,9 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     String trimmed = message.trim();
 
     List<Pattern> patterns = List.of(
-      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen|busca(?:me)?|consigue(?:me)?|encuentra(?:me)?|trae(?:me)?|mu[eé]strame|mostrame|ens[eé]ñame|recomi[eé]ndame|t[ií]rame|l[aá]nzame|ponme|dame|quiero|p[aá]same|su[eé]ltame)(?:\s+(?:alg[uú]n|alguna|alguito|algo|un|una))?\s*(?:evento|eventos|concierto|conciertos|fiesta|fiestas|show|shows|plan|planes|rumba|rumbas|actividad|actividades)?\s*(?:de|sobre|con)\s+(.+)$"),
-      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen)(?:\s+(?:alg[uú]n|alguna|algo|un|una))?\s*(?:evento|eventos|concierto|conciertos|fiesta|fiestas|show|shows|plan|planes|actividad|actividades)\s+(.+)$"),
-      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen|busca(?:me)?|consigue(?:me)?|encuentra(?:me)?|trae(?:me)?|mu[eé]strame|mostrame|ens[eé]ñame|recomi[eé]ndame|t[ií]rame|l[aá]nzame|ponme|dame|quiero|p[aá]same|su[eé]ltame)(?:\s+(?:alg[uú]n|alguna|algo|un|una))?\s+(.+)$")
+      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen|busca(?:me)?|mu[eé]strame|mostrame|recomi[eé]ndame|quiero)(?:\s+(?:alg[uú]n|alguna|alguito|algo|un|una))?\s*(?:evento|eventos|concierto|conciertos|fiesta|fiestas|show|shows|plan|planes)?\s*(?:de|sobre|con)\s+(.+)$"),
+      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen)(?:\s+(?:alg[uú]n|alguna|algo|un|una))?\s*(?:evento|eventos|concierto|conciertos|fiesta|fiestas|show|shows|plan|planes)\s+(.+)$"),
+      Pattern.compile("(?i)(?:hay|habra|habrá|existe|tienen|busca(?:me)?|mu[eé]strame|mostrame|recomi[eé]ndame|quiero)(?:\s+(?:alg[uú]n|alguna|algo|un|una))?\s+(.+)$")
     );
 
     for (Pattern pattern : patterns) {
@@ -1182,6 +1169,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     return null;
   }
+
 
   private String extractFollowUpTopicReference(String originalMessage, String normalizedMessage) {
     if (isBlank(originalMessage)) {
@@ -1198,14 +1186,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       candidate = originalMessage.trim().substring(8).trim();
     } else if (normalizedMessage.startsWith("sobre ")) {
       candidate = originalMessage.trim().substring(6).trim();
-    } else if (normalizedMessage.startsWith("y para ")) {
-      candidate = originalMessage.trim().substring(7).trim();
-    } else if (normalizedMessage.startsWith("para ")) {
-      candidate = originalMessage.trim().substring(5).trim();
-    } else if (normalizedMessage.startsWith("y con ")) {
-      candidate = originalMessage.trim().substring(6).trim();
-    } else if (normalizedMessage.startsWith("con ")) {
-      candidate = originalMessage.trim().substring(4).trim();
     } else if (normalizedMessage.startsWith("y ")) {
       candidate = originalMessage.trim().substring(2).trim();
     }
@@ -1332,12 +1312,11 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "hay un concierto de", "hay concierto de", "hay algun concierto de", "hay algún concierto de",
       "hay un evento de", "hay evento de", "hay algun evento de", "hay algún evento de",
       "hay algo de", "hay algo sobre", "quiero algo de", "quiero algo sobre",
-      "hay algun show de", "hay algún show de", "hay algo con",
+      "hay algun show de", "hay algún show de",
       "hay una", "hay algun", "hay algún", "existe una", "existe algun", "existe algún",
-      "tienen una", "tienen algun", "tienen algún", "tienen algo de", "tienen algo sobre",
-      "busca", "búscame", "muestrame", "muéstrame", "mostrame", "ensename", "enséñame",
-      "traeme", "tráeme", "consigueme", "consígueme", "tirame", "tírame", "ponme", "lanzame", "lánzame",
-      "recomiendame algo de", "recomiéndame algo de", "recomendame algo de", "pasame algo de", "pásame algo de");
+      "tienen una", "tienen algun", "tienen algún",
+      "busca", "búscame", "muestrame", "muéstrame", "mostrame",
+      "recomiendame algo de", "recomiéndame algo de");
   }
 
   private AssistantResponse handleRandomNearbyEventRequest(String message, ConversationMemory memory) {
@@ -1530,9 +1509,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       null,
       memory.intentQuery
     );
-    if (!isBlank(memory.category) || !isBlank(memory.intentQuery) || !isBlank(memory.city)) {
-      return List.of();
-    }
+    if (!cityOnly.isEmpty()) return sortEvents(cityOnly, memory, preferredCategories);
 
     return sortEvents(publicEvents, memory, preferredCategories);
   }
@@ -1593,10 +1570,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     );
     if (!cityOnly.isEmpty()) return sortEvents(cityOnly, memory, preferredCategories);
 
-    if (!isBlank(memory.category) || !isBlank(memory.intentQuery) || !isBlank(memory.city)) {
-      return List.of();
-    }
-
     return sortEvents(publicEvents, memory, preferredCategories);
   }
 
@@ -1642,7 +1615,9 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     }
 
     List<Evento> top = results.stream().limit(5).toList();
-    List<AssistantOptionDto> options = buildOptions(top, memory, 5);
+    List<AssistantOptionDto> options = top.stream()
+      .map(event -> toOption(event, memory))
+      .toList();
 
     StringBuilder reply = new StringBuilder("Estos son algunos eventos disponibles");
 
@@ -1902,10 +1877,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   }
 
   private AssistantOptionDto toOption(Evento evento, ConversationMemory memory) {
-    if (evento != null && evento.getIdEvento() != null) {
-      memory.lastFocusedEventId = evento.getIdEvento();
-    }
-
     String city = safe(evento.getCiudad());
     String hour = evento.getHoraInicio() != null ? evento.getHoraInicio().format(HOUR_FORMAT) : "";
     String price = "";
@@ -1942,11 +1913,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     Map<String, Object> context = request.pageContext();
 
-    String currentView = safeString(context.get("currentView"));
-    if (!currentView.isBlank()) {
-      memory.lastRoute = currentView;
-    }
-
     Double userLat = toDouble(context.get("userLat"));
     Double userLng = toDouble(context.get("userLng"));
     Double mapCenterLat = toDouble(context.get("mapCenterLat"));
@@ -1955,440 +1921,13 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     if (userLat != null && userLng != null) {
       memory.referenceLat = userLat;
       memory.referenceLng = userLng;
-    } else if (mapCenterLat != null && mapCenterLng != null) {
+      return;
+    }
+
+    if (mapCenterLat != null && mapCenterLng != null) {
       memory.referenceLat = mapCenterLat;
       memory.referenceLng = mapCenterLng;
     }
-
-    Integer currentEventId = toInteger(context.get("currentEventId"));
-    if (currentEventId != null) {
-      memory.currentEventId = currentEventId;
-      memory.currentEventTitle = safeString(context.get("currentEventTitle"));
-      memory.currentEventCity = safeString(context.get("currentEventCity"));
-      memory.currentEventCategory = safeString(context.get("currentEventCategory"));
-      memory.currentEventPrice = toInteger(context.get("currentEventPrice"));
-      memory.currentEventIsFree = toBoolean(context.get("currentEventIsFree"));
-      memory.lastFocusedEventId = currentEventId;
-    } else if (!currentView.startsWith("/event/")) {
-      clearCurrentEventContext(memory);
-    }
-
-    List<Integer> visibleEventIds = toIntegerList(context.get("visibleEventIds"));
-    if (!visibleEventIds.isEmpty()) {
-      memory.lastShownEventIds = visibleEventIds.stream().distinct().limit(10).toList();
-      memory.lastShownEventTitles = toStringList(context.get("visibleEventTitles"))
-        .stream()
-        .limit(10)
-        .toList();
-    }
-
-    Object activeFiltersRaw = context.get("activeFilters");
-    if (activeFiltersRaw instanceof Map<?, ?> activeFilters) {
-      String category = safeString(activeFilters.get("category"));
-      if (!category.isBlank()) {
-        memory.category = category;
-      }
-
-      String searchText = safeString(activeFilters.get("searchText"));
-      if (!searchText.isBlank()) {
-        memory.intentQuery = searchText;
-      }
-    }
-  }
-
-  private AssistantResponse handleCurrentEventQuestion(String normalizedMessage, ConversationMemory memory) {
-    if (memory.currentEventId == null || !isCurrentEventQuestion(normalizedMessage, memory)) {
-      return null;
-    }
-
-    String title = !isBlank(memory.currentEventTitle) ? memory.currentEventTitle : "este evento";
-
-    if (containsAny(normalizedMessage, "gratis", "cuesta", "vale", "precio", "pagar")) {
-      if (Boolean.TRUE.equals(memory.currentEventIsFree)) {
-        return simpleReply("Sí. \"" + title + "\" es gratis.");
-      }
-
-      if (memory.currentEventPrice != null) {
-        return simpleReply("No es gratis. \"" + title + "\" cuesta " + formatCop(memory.currentEventPrice) + ".");
-      }
-
-      return simpleReply("Ese evento no aparece como gratis. Revísalo en el detalle para confirmar el valor.");
-    }
-
-    if (containsAny(normalizedMessage, "donde", "dónde", "queda", "ubicado", "ubicacion", "ubicación", "ciudad")) {
-      if (!isBlank(memory.currentEventCity)) {
-        return simpleReply("\"" + title + "\" está en " + memory.currentEventCity + ".");
-      }
-
-      return simpleReply("No tengo la ciudad de ese evento en el contexto actual, pero ya estás en su detalle.");
-    }
-
-    if (containsAny(normalizedMessage, "categoria", "categoría", "tipo", "de que trata", "de qué trata")) {
-      if (!isBlank(memory.currentEventCategory)) {
-        return simpleReply("\"" + title + "\" es de categoría " + memory.currentEventCategory + ".");
-      }
-
-      return simpleReply("No tengo la categoría exacta en este momento, pero ya estás en el detalle del evento.");
-    }
-
-    if (containsAny(normalizedMessage, "comentarios", "comentario")) {
-      return new AssistantResponse(
-        "Sí. Si el evento tiene comentarios habilitados, te bajo a esa sección ahora.",
-        List.of(new AssistantActionDto("scroll", null, "comments-section", null, null)),
-        List.of()
-      );
-    }
-
-    if (containsAny(normalizedMessage, "inscrib", "registr", "unirme", "meterme")) {
-      return simpleReply(
-        "Si te interesa \"" + title + "\", desde su detalle puedes inscribirte o iniciar el pago si aplica. "
-          + "Si no ves el botón, revisa que tengas sesión iniciada."
-      );
-    }
-
-    StringBuilder reply = new StringBuilder("Estás viendo \"" + title + "\"");
-
-    if (!isBlank(memory.currentEventCity)) {
-      reply.append(" en ").append(memory.currentEventCity);
-    }
-
-    if (!isBlank(memory.currentEventCategory)) {
-      reply.append(". Es un evento de ").append(memory.currentEventCategory);
-    }
-
-    if (Boolean.TRUE.equals(memory.currentEventIsFree)) {
-      reply.append(" y además es gratis");
-    } else if (memory.currentEventPrice != null) {
-      reply.append(" y cuesta ").append(formatCop(memory.currentEventPrice));
-    }
-
-    reply.append(".");
-    return simpleReply(reply.toString());
-  }
-
-  private boolean isCurrentEventQuestion(String normalizedMessage, ConversationMemory memory) {
-    boolean asksEventAttribute = containsAny(normalizedMessage,
-      "gratis", "cuesta", "vale", "precio", "pagar",
-      "donde", "dónde", "queda", "ubicado", "ubicacion", "ubicación", "ciudad",
-      "categoria", "categoría", "tipo", "de que trata", "de qué trata",
-      "comentarios", "comentario",
-      "inscrib", "registr", "unirme", "meterme");
-
-    if (!asksEventAttribute) {
-      return false;
-    }
-
-    if (safe(memory.lastRoute).startsWith("/event/")) {
-      return true;
-    }
-
-    return containsAny(normalizedMessage,
-      "este evento", "este plan", "de este evento", "del evento", "aqui", "aquí");
-  }
-
-  private void mergeHistoryContext(AssistantRequest request, ConversationMemory memory) {
-    if (request == null || request.history() == null || request.history().isEmpty()) {
-      return;
-    }
-
-    AssistantChatMessageDto lastUser = null;
-    AssistantChatMessageDto lastAssistant = null;
-
-    for (AssistantChatMessageDto item : request.history()) {
-      if (item == null || isBlank(item.text())) continue;
-
-      if ("user".equalsIgnoreCase(safe(item.role()))) {
-        lastUser = item;
-      } else if ("assistant".equalsIgnoreCase(safe(item.role()))) {
-        lastAssistant = item;
-      }
-    }
-
-    if (lastUser != null) {
-      memory.lastUserMessage = safe(lastUser.text());
-    }
-
-    if (lastAssistant != null) {
-      memory.lastAssistantMessage = safe(lastAssistant.text());
-    }
-
-    if (isBlank(memory.lastTopicQuery) && !isBlank(memory.lastUserMessage)) {
-      memory.lastTopicQuery = memory.lastUserMessage;
-    }
-  }
-
-  private AssistantResponse handleResultListFollowUp(String normalizedMessage, ConversationMemory memory) {
-    List<Evento> shownEvents = resolveLastShownEvents(memory);
-    if (shownEvents.isEmpty()) {
-      return null;
-    }
-
-    Integer ordinal = extractOrdinalReference(normalizedMessage);
-
-    boolean asksOther = containsAny(normalizedMessage,
-      "otro", "otra", "otra opcion", "otra opción");
-    boolean asksCheapest = containsAny(normalizedMessage,
-      "mas barato", "más barato", "mas economico", "más económico", "economico", "económico");
-    boolean asksNearest = containsAny(normalizedMessage,
-      "mas cerca", "más cerca", "mas cercano", "más cercano", "cercano");
-    boolean asksToOpen = containsAny(normalizedMessage,
-      "abre", "abrime", "abreme", "muestrame", "muéstrame", "mostrame",
-      "llevame", "llévame", "entra", "quiero ese", "quiero esa");
-
-    if (ordinal == null && !asksOther && !asksCheapest && !asksNearest) {
-      return null;
-    }
-
-    if (ordinal != null) {
-      int index = ordinal - 1;
-      if (index < 0 || index >= shownEvents.size()) {
-        return simpleReply("Solo tengo " + shownEvents.size() + " opciones recientes para escoger.");
-      }
-
-      Evento selected = shownEvents.get(index);
-      memory.lastFocusedEventId = selected.getIdEvento();
-
-      return new AssistantResponse(
-        "Listo. Te llevo a la opción " + ordinal + ": \"" + safe(selected.getTitulo()) + "\".",
-        List.of(new AssistantActionDto("navigate", "/event/" + selected.getIdEvento(), null, null, null)),
-        List.of()
-      );
-    }
-
-    List<Evento> reordered = new ArrayList<>(shownEvents);
-
-    if (asksCheapest) {
-      reordered = reordered.stream()
-        .sorted(Comparator
-          .comparing((Evento event) -> comparablePrice(event))
-          .thenComparingDouble((Evento event) -> distanceScoreForNavigation(event, memory)))
-        .toList();
-    }
-
-    if (asksNearest) {
-      if (memory.referenceLat == null || memory.referenceLng == null) {
-        return simpleReply("Para decirte cuál queda más cerca, necesito tu ubicación o que abras el mapa para ubicarte mejor.");
-      }
-
-      reordered = reordered.stream()
-        .sorted(Comparator
-          .comparingDouble((Evento event) -> distanceScoreForNavigation(event, memory))
-          .thenComparing((Evento event) -> comparablePrice(event)))
-        .toList();
-    }
-
-    if (asksOther) {
-      Integer focusedId = memory.lastFocusedEventId != null
-        ? memory.lastFocusedEventId
-        : memory.currentEventId;
-
-      Evento alternative = reordered.stream()
-        .filter(event -> !Objects.equals(event.getIdEvento(), focusedId))
-        .findFirst()
-        .orElse(reordered.get(0));
-
-      reordered = moveEventToFront(reordered, alternative.getIdEvento());
-    }
-
-    Evento top = reordered.get(0);
-    memory.lastFocusedEventId = top.getIdEvento();
-
-    List<AssistantOptionDto> options = buildOptions(reordered, memory, 5);
-
-    if (asksToOpen && asksOther && !asksCheapest && !asksNearest) {
-      return new AssistantResponse(
-        "Claro. Te llevo a otra opción: \"" + safe(top.getTitulo()) + "\".",
-        List.of(new AssistantActionDto("navigate", "/event/" + top.getIdEvento(), null, null, null)),
-        List.of()
-      );
-    }
-
-    String reply;
-    if (asksCheapest) {
-      reply = "Listo. Reordené las opciones por precio. La más barata ahora es \"" + safe(top.getTitulo()) + "\".";
-    } else if (asksNearest) {
-      reply = "Listo. Reordené las opciones por cercanía. La que te queda más cerca ahora es \"" + safe(top.getTitulo()) + "\".";
-    } else {
-      reply = "Claro. Te dejo otra alternativa: \"" + safe(top.getTitulo()) + "\".";
-    }
-
-    return new AssistantResponse(reply, List.of(), options);
-  }
-
-  private List<Evento> resolveLastShownEvents(ConversationMemory memory) {
-    if (memory.lastShownEventIds == null || memory.lastShownEventIds.isEmpty()) {
-      return List.of();
-    }
-
-    List<Integer> orderedIds = new ArrayList<>(memory.lastShownEventIds);
-
-    return eventoService.getEventosPublicos().stream()
-      .filter(event -> event.getIdEvento() != null && orderedIds.contains(event.getIdEvento()))
-      .sorted(Comparator.comparingInt(event -> orderedIds.indexOf(event.getIdEvento())))
-      .toList();
-  }
-
-  private Integer extractOrdinalReference(String normalizedMessage) {
-    if (isBlank(normalizedMessage)) return null;
-
-    if (containsAny(normalizedMessage, "primer", "primero", "primera")) return 1;
-    if (containsAny(normalizedMessage, "segundo", "segunda")) return 2;
-    if (containsAny(normalizedMessage, "tercer", "tercero", "tercera")) return 3;
-    if (containsAny(normalizedMessage, "cuarto", "cuarta")) return 4;
-    if (containsAny(normalizedMessage, "quinto", "quinta")) return 5;
-
-    Matcher matcher = Pattern.compile("\\b([1-5])\\b").matcher(normalizedMessage);
-    if (matcher.find()) {
-      return Integer.parseInt(matcher.group(1));
-    }
-
-    return null;
-  }
-
-  private List<Evento> moveEventToFront(List<Evento> source, Integer targetId) {
-    if (source == null || source.isEmpty() || targetId == null) {
-      return source == null ? List.of() : source;
-    }
-
-    List<Evento> reordered = new ArrayList<>(source);
-    Evento selected = null;
-
-    for (Evento event : reordered) {
-      if (Objects.equals(event.getIdEvento(), targetId)) {
-        selected = event;
-        break;
-      }
-    }
-
-    if (selected == null) {
-      return reordered;
-    }
-
-    reordered.remove(selected);
-    reordered.add(0, selected);
-    return reordered;
-  }
-
-  private List<AssistantOptionDto> buildOptions(List<Evento> results, ConversationMemory memory, int limit) {
-    List<Evento> safeResults = results == null
-      ? List.of()
-      : results.stream().filter(Objects::nonNull).toList();
-
-    rememberResultSet(memory, safeResults);
-
-    return safeResults.stream()
-      .limit(limit)
-      .map(event -> toOption(event, memory))
-      .toList();
-  }
-
-  private void rememberResultSet(ConversationMemory memory, List<Evento> results) {
-    if (memory == null || results == null || results.isEmpty()) {
-      return;
-    }
-
-    List<Evento> cleaned = results.stream()
-      .filter(Objects::nonNull)
-      .filter(event -> event.getIdEvento() != null)
-      .toList();
-
-    if (cleaned.isEmpty()) {
-      return;
-    }
-
-    memory.lastShownEventIds = cleaned.stream()
-      .map(Evento::getIdEvento)
-      .distinct()
-      .limit(10)
-      .toList();
-
-    memory.lastShownEventTitles = cleaned.stream()
-      .map(Evento::getTitulo)
-      .filter(Objects::nonNull)
-      .limit(10)
-      .toList();
-
-    if (memory.lastFocusedEventId == null) {
-      memory.lastFocusedEventId = cleaned.get(0).getIdEvento();
-    }
-  }
-
-  private void clearCurrentEventContext(ConversationMemory memory) {
-    memory.currentEventId = null;
-    memory.currentEventTitle = null;
-    memory.currentEventCity = null;
-    memory.currentEventCategory = null;
-    memory.currentEventPrice = null;
-    memory.currentEventIsFree = null;
-  }
-
-  private String safeString(Object value) {
-    return value == null ? "" : String.valueOf(value).trim();
-  }
-
-  private Integer toInteger(Object value) {
-    if (value == null) return null;
-
-    if (value instanceof Number number) {
-      return number.intValue();
-    }
-
-    try {
-      String digits = String.valueOf(value).replaceAll("[^\\d-]", "");
-      if (digits.isBlank()) return null;
-      return Integer.parseInt(digits);
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  private Boolean toBoolean(Object value) {
-    if (value == null) return null;
-    if (value instanceof Boolean b) return b;
-
-    String text = normalize(String.valueOf(value));
-    if ("true".equals(text) || "si".equals(text) || "sí".equals(text) || "1".equals(text)) return true;
-    if ("false".equals(text) || "no".equals(text) || "0".equals(text)) return false;
-
-    return null;
-  }
-
-  private List<Integer> toIntegerList(Object value) {
-    if (!(value instanceof List<?> list)) return List.of();
-
-    List<Integer> result = new ArrayList<>();
-    for (Object item : list) {
-      Integer parsed = toInteger(item);
-      if (parsed != null && !result.contains(parsed)) {
-        result.add(parsed);
-      }
-    }
-    return result;
-  }
-
-  private List<String> toStringList(Object value) {
-    if (!(value instanceof List<?> list)) return List.of();
-
-    List<String> result = new ArrayList<>();
-    for (Object item : list) {
-      String parsed = safeString(item);
-      if (!parsed.isBlank()) {
-        result.add(parsed);
-      }
-    }
-    return result;
-  }
-
-  private BigDecimal comparablePrice(Evento event) {
-    if (event == null || Boolean.TRUE.equals(event.getEventoGratuito()) || event.getPrecio() == null) {
-      return BigDecimal.ZERO;
-    }
-    return event.getPrecio();
-  }
-
-  private String formatCop(Integer value) {
-    if (value == null) return "sin precio definido";
-    return "$" + String.format(Locale.US, "%,d", value).replace(',', '.');
   }
 
   private void applyAwaitingAnswer(String message, ConversationMemory memory) {
@@ -2602,13 +2141,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   }
 
   private String buildEventSearchText(Evento event) {
-    String categoryHints = String.join(" ", categoryKeywords(safe(event.getCategoria())));
-
     return normalize(
       safe(event.getTitulo()) + " " +
         safe(event.getDescripcion()) + " " +
         safe(event.getCategoria()) + " " +
-        categoryHints + " " +
         safe(event.getNombreLugar()) + " " +
         safe(event.getUbicacion()) + " " +
         safe(event.getDireccionCompleta()) + " " +
@@ -2617,35 +2153,30 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   }
 
   private List<String> extractSearchKeywords(String raw) {
-    String normalized = normalize(raw).replaceAll("[^a-z0-9ñ\\s]", " ");
-    String[] tokens = normalized.split("\\s+");
+    String normalized = normalize(raw).replaceAll("[^a-z0-9ñ\s]", " ");
+    String[] tokens = normalized.split("\s+");
 
     Set<String> stopWords = new HashSet<>(List.of(
-      "quiero", "algo", "evento", "eventos", "plan", "planes",
-      "para", "con", "sin", "gratis", "pago", "pagado", "pagada",
-      "de", "del", "la", "el", "en", "por", "mi", "mis", "un",
-      "una", "que", "estoy", "esta", "pero", "dia", "clima", "frio",
-      "fria", "caliente", "calor", "soleado", "soleada", "lluvia",
-      "lloviendo", "porfa", "entonces", "oe", "aja", "segun",
-      "preferencias", "gustos", "hay", "existe", "tienen", "algun",
-      "alguna", "presupuesto", "hasta", "pesos", "recomiendame",
-      "recomienda", "buscame", "muestrame", "mostrame", "llevame",
-      "abre", "abrime", "ir", "entrar", "ver", "hacer", "salir",
-      "parche", "vuelta", "vueltica", "vaina", "cosa", "alguito",
-      "tirame", "ponme", "lanzame", "traeme", "consigueme", "pasame"
+      "quiero", "algo", "evento", "eventos", "recomiendame",
+      "recomendar", "plan", "planes", "para", "con", "sin",
+      "gratis", "pago", "de", "del", "la", "el", "en", "por",
+      "mi", "mis", "un", "una", "que", "estoy", "esta", "pero",
+      "dia", "clima", "frio", "fria", "caliente", "calor",
+      "soleado", "soleada", "lluvia", "lloviendo", "armame",
+      "armar", "hazme", "dame", "porfa", "entonces", "oe",
+      "aja", "segun", "preferencias", "gustos", "hay",
+      "existe", "tienen", "buscame", "muestrame", "mostrame",
+      "algun", "alguna", "presupuesto", "hasta", "pesos", "rmame"
     ));
 
-    LinkedHashSet<String> keywords = new LinkedHashSet<>();
+    List<String> keywords = new ArrayList<>();
     for (String token : tokens) {
-      String comparable = toComparableToken(token);
-      if (comparable.length() >= 3
-        && !stopWords.contains(comparable)
-        && !comparable.matches("\\d+")) {
-        keywords.add(comparable);
+      if (token.length() >= 4 && !stopWords.contains(token) && !token.matches("\\d+")) {
+        keywords.add(token);
       }
     }
 
-    return keywords.stream().toList();
+    return keywords;
   }
 
   private String buildNoResultsMessage(ConversationMemory memory) {
@@ -2689,7 +2220,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       return simpleReply(buildNoResultsMessage(memory));
     }
 
-    List<AssistantOptionDto> options = buildOptions(results, memory, 5);
+    List<AssistantOptionDto> options = results.stream()
+      .limit(5)
+      .map(event -> toOption(event, memory))
+      .toList();
 
     String intro = switch (memory.mood) {
       case "TRISTE" -> "Para animarte, estas opciones te pueden caer muy bien.";
@@ -2705,19 +2239,18 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
   private boolean isMoodRecommendationIntent(String message) {
     return containsAny(message,
-      "estoy triste", "ando triste", "me siento triste", "ando bajoneado", "ando bajoneada",
-      "estoy depre", "ando depre", "estoy deprimido", "estoy deprimida", "estoy desanimado", "estoy desanimada",
-      "estoy feliz", "ando feliz", "me siento feliz", "estoy contento", "estoy contenta", "estoy emocionado", "estoy emocionada",
-      "estoy aburrido", "estoy aburrida", "ando aburrido", "ando aburrida", "estoy mamado", "estoy mamada", "estoy sin plan",
-      "estoy estresado", "estoy estresada", "ando estresado", "ando estresada", "estoy agotado", "estoy agotada", "ando rayado", "ando rayada")
-      && containsAny(message, "recomienda", "recomiendame", "recomiéndame", "que me recomiendas", "qué me recomiendas", "quiero algo", "buscame algo", "muestrame algo");
+      "estoy triste", "ando triste", "me siento triste",
+      "estoy feliz", "ando feliz", "me siento feliz",
+      "estoy aburrido", "estoy aburrida", "ando aburrido", "ando aburrida",
+      "estoy estresado", "estoy estresada", "ando estresado", "ando estresada")
+      && containsAny(message, "recomienda", "recomiendame", "recomiéndame", "que me recomiendas", "qué me recomiendas", "quiero algo");
   }
 
   private String detectMood(String message) {
-    if (containsAny(message, "triste", "desanimado", "desanimada", "depre", "deprimido", "deprimida", "bajoneado", "bajoneada")) return "TRISTE";
-    if (containsAny(message, "feliz", "contento", "contenta", "emocionado", "emocionada", "animado", "animada")) return "FELIZ";
-    if (containsAny(message, "estresado", "estresada", "agotado", "agotada", "mamado", "mamada", "rayado", "rayada", "abrumado", "abrumada")) return "ESTRESADO";
-    if (containsAny(message, "aburrido", "aburrida", "sin plan", "desparchado", "desparchada", "sin nada que hacer")) return "ABURRIDO";
+    if (containsAny(message, "triste", "desanimado", "desanimada")) return "TRISTE";
+    if (containsAny(message, "feliz", "contento", "contenta")) return "FELIZ";
+    if (containsAny(message, "estresado", "estresada", "agotado", "agotada")) return "ESTRESADO";
+    if (containsAny(message, "aburrido", "aburrida")) return "ABURRIDO";
     return "NEUTRO";
   }
 
@@ -2768,7 +2301,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     Evento top = rankedByWeather.get(0);
     ClimaResponse weather = getWeather(top.getCiudad());
 
-    List<AssistantOptionDto> options = buildOptions(rankedByWeather, memory, 5);
+    List<AssistantOptionDto> options = rankedByWeather.stream()
+      .limit(5)
+      .map(event -> toOption(event, memory))
+      .toList();
 
     String reply = buildWeatherRecommendationReply(top, weather, normalizedMessage);
 
@@ -2778,14 +2314,14 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
   private boolean isWeatherRecommendationIntent(String message) {
     boolean hasWeatherCue = containsAny(message,
-      "esta lloviendo", "está lloviendo", "si llueve", "con lluvia", "lluvia", "aguacero", "diluvio",
-      "dia soleado", "día soleado", "soleado", "soleada", "sol", "solazo", "asoleado", "asoleada",
-      "clima", "pronostico", "pronóstico", "tiempo",
-      "frio", "fria", "fresco", "fresquito", "helado", "heladito", "frisquito",
-      "caliente", "calor", "calientico", "templado", "bochorno", "pegando duro el sol", "nublado");
+      "esta lloviendo", "está lloviendo", "si llueve", "con lluvia", "lluvia",
+      "dia soleado", "día soleado", "soleado", "soleada", "sol",
+      "clima", "pronostico", "pronóstico",
+      "frio", "fria", "fresco", "fresquito",
+      "caliente", "calor", "calientico", "templado");
 
     boolean hasRecommendationCue = containsAny(message,
-      "evento", "eventos", "recomienda", "recomiendame", "quiero", "muestrame", "buscame", "tirame algo", "ponme algo")
+      "evento", "eventos", "recomienda", "recomiendame", "quiero", "muestrame", "buscame")
       || safe(message).startsWith("y ")
       || safe(message).startsWith("de ");
 
@@ -2932,47 +2468,32 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
   private List<String> categoryKeywords(String category) {
     String normalized = normalize(category);
+
     return switch (normalized) {
       case "gaming" -> List.of(
-        "gaming", "gamer", "videojuego", "videojuegos", "esports", "e sports", "e-sports",
-        "torneo gamer", "playstation", "ps5", "ps4", "xbox", "nintendo", "switch", "steam",
-        "valorant", "fifa", "fc 25", "fc25", "fortnite", "league of legends", "lol", "dota",
-        "lan party", "consola", "free fire", "cod", "call of duty", "warzone", "minecraft", "smash"
+        "gaming", "gamer", "videojuego", "videojuegos", "esports", "e sports",
+        "torneo gamer", "playstation", "xbox", "nintendo", "valorant", "fifa",
+        "fortnite", "league of legends", "lol"
       );
       case "musica" -> List.of(
-        "musica", "concierto", "conciertos", "show", "toque", "dj", "presentacion", "presentación",
-        "banda", "artista", "festival", "karaoke", "salsa", "bachata",
-        "vallenato", "reggaeton", "electronica", "techno", "house",
-        "rap", "trap", "hip hop", "jazz", "orquesta", "acustico", "acustica",
-        "rock", "metal", "indie", "guaracha", "merengue", "crossover", "live set"
+        "musica", "concierto", "conciertos", "show", "toque", "dj",
+        "banda", "artista", "festival"
       );
       case "fiestas" -> List.of(
-        "fiesta", "fiestas", "rumba", "rumbita", "parche", "farra", "after party", "party",
-        "discoteca", "disco", "perreo", "guaro", "trago", "pool party", "baile",
-        "rumbeadero", "after", "farrita", "tomadero", "parrandita", "parranda", "noche de rumba"
+        "fiesta", "fiestas", "rumba", "parche", "farra", "after party", "party"
       );
       case "deporte" -> List.of(
-        "deporte", "deportes", "futbol", "partido", "torneo", "cancha", "ejercicio",
-        "microfutbol", "futsal", "baloncesto", "basket", "basketball",
-        "voleibol", "voley", "running", "trote", "ciclismo", "ciclovia",
-        "natacion", "tenis", "padel", "boxeo", "crossfit", "gimnasio",
-        "gym", "senderismo", "trekking", "patinaje", "maraton", "maratón", "yoga", "spinning"
+        "deporte", "deportes", "futbol", "partido", "torneo", "cancha", "ejercicio"
       );
       case "gastronomia" -> List.of(
         "gastronomia", "comida", "comer", "cena", "almuerzo", "brunch",
-        "restaurante", "degustacion", "desayuno", "cafe", "cafeteria",
-        "cata", "vino", "asado", "picada", "hamburguesa", "pizza",
-        "coctel", "cocteles", "cocteleria", "tragos", "cerveza artesanal", "food truck", "tapas"
+        "restaurante", "degustacion"
       );
       case "networking" -> List.of(
-        "networking", "network", "negocios", "emprendedores", "emprendimiento",
-        "contactos", "charla", "taller", "workshop", "conferencia",
-        "congreso", "meetup", "feria", "seminario", "masterclass", "panel", "ponencia", "speakers"
+        "networking", "negocios", "emprendedores", "contactos", "network"
       );
       case "arte" -> List.of(
-        "arte", "artistico", "artistica", "galeria", "exposicion",
-        "museo", "teatro", "cine", "pelicula", "stand up", "comedia",
-        "poesia", "danza", "cultural", "fotografia", "pintura", "impro", "obra", "performance"
+        "arte", "artistico", "galeria", "exposicion", "museo"
       );
       default -> List.of(normalized);
     };
@@ -3036,59 +2557,48 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   private boolean isPlanIntent(String message) {
     return containsAny(message,
       "hazme un plan",
+      "hazme un plan porfa",
       "armame un plan",
-      "organízame un plan",
+      "ármame un plan",
+      "rmame un plan",
+      "armame plan",
+      "ármame plan",
+      "armame algo",
+      "ármame algo",
+      "rmame algo",
+      "necesito un plan",
+      "quiero un plan",
+      "me ayudas con un plan",
       "organizame un plan",
+      "organízame un plan",
+      "quiero salir",
+      "quiero una fiesta",
+      "quiero ir a una fiesta",
+      "buscame un plan",
+      "búscame un plan",
       "recomiendame un plan",
       "recomiéndame un plan",
-      "recomiendame algo",
-      "recomiéndame algo",
-      "ponme algo",
-      "tirame algo",
-      "tírame algo",
-      "sugiereme algo",
-      "sugiéreme algo",
+      "que puedo hacer hoy",
+      "qué puedo hacer hoy",
       "dame un plan",
       "dame ideas",
-      "algo para hacer",
-      "que hay para hacer",
-      "qué hay para hacer",
-      "que se puede hacer",
-      "qué se puede hacer",
-      "quiero salir",
-      "quiero un parche",
-      "quiero un plan",
-      "plan para hoy",
-      "plan para esta noche",
-      "sorprendeme con algo",
-      "sorpréndeme con algo",
-      "plancito",
-      "plan tranquilo",
-      "que me recomiendas hacer",
-      "qué me recomiendas hacer",
-      "que parche hay",
-      "qué parche hay",
-      "dame un parche",
-      "botame un plan",
-      "bótame un plan",
-      "quiero hacer algo",
-      "estoy desparchado",
-      "estoy desparchada",
-      "sin plan",
-      "saqueme un plan",
-      "sácame un plan"
+      "quiero algo para hacer",
+      "plancito"
     );
   }
 
   private boolean isPreferencesRecommendationIntent(String message) {
     return containsAny(message,
       "segun mis preferencias",
+      "según mis preferencias",
       "segun mis gustos",
-      "basado en mis preferencias",
-      "basado en mis gustos",
-      "de acuerdo con mis gustos",
-      "de acuerdo con mis preferencias",
-      "segun lo que me gusta"
+      "según mis gustos",
+      "que me recomiendas",
+      "qué me recomiendas",
+      "recomiendame",
+      "recomiéndame",
+      "algo para mi",
+      "algo que me guste"
     );
   }
 
@@ -3096,6 +2606,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     return containsAny(message,
       "quiero un evento",
       "busco un evento",
+      "evento de",
       "eventos de",
       "eventos en",
       "hay eventos en",
@@ -3103,81 +2614,46 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "hay algun evento de",
       "hay algún evento de",
       "hay un concierto de",
-      "buscame eventos",
-      "búscame eventos",
-      "muestrame eventos",
-      "muéstrame eventos",
-      "mostrame eventos",
-      "ver eventos",
-      "que eventos hay",
-      "qué eventos hay",
-      "que hay para hacer",
-      "qué hay para hacer",
-      "que hay en",
-      "qué hay en",
-      "hay algo en",
-      "algo para hacer",
-      "algun evento",
-      "algún evento",
-      "algun concierto",
-      "algún concierto",
-      "recomiendame algo",
-      "recomiéndame algo",
-      "quiero hacer algo",
-      "actividad",
-      "actividades",
-      "salida",
-      "vuelta",
-      "parche",
-      "parches",
+      "hay algun concierto de",
+      "hay algún concierto de",
       "fiesta",
       "futbol",
+      "fútbol",
       "musica",
+      "música",
       "gastronomia",
+      "gastronomía",
       "gaming",
       "arte",
       "networking",
       "deporte",
       "deportes",
-      "karaoke",
-      "salsa",
-      "bachata",
-      "reggaeton",
-      "techno",
-      "house",
-      "stand up",
-      "comedia",
-      "teatro",
-      "cine",
-      "brunch",
-      "restaurante",
-      "taller",
-      "workshop",
-      "charla",
-      "meetup",
-      "rumba",
-      "feria",
-      "festival",
-      "show",
-      "toque",
-      "planes en",
-      "que parche hay",
-      "qué parche hay",
-      "que vuelta hay",
-      "qué vuelta hay"
+      "deportivo",
+      "deportiva",
+      "ver eventos",
+      "algo para hacer",
+      "algún evento",
+      "algun evento",
+      "algún concierto",
+      "algun concierto",
+      "recomiendame algo",
+      "recomiéndame algo",
+      "quiero hacer algo"
     );
   }
 
   private boolean isAboutParchaFaceQuestion(String message) {
-    String normalized = normalize(message);
-
-    return normalized.contains("parchaface") && containsAny(normalized,
-      "que es",
-      "quien es",
-      "para que sirve",
-      "de que trata",
-      "que hace",
-      "como funciona"
+    return containsAny(message,
+      "que es parchaface",
+      "qué es parchaface",
+      "quien es parchaface",
+      "quién es parchaface",
+      "para que sirve parchaface",
+      "para qué sirve parchaface",
+      "de que trata parchaface",
+      "de qué trata parchaface",
+      "que hace parchaface",
+      "qué hace parchaface"
     );
   }
 
@@ -3192,15 +2668,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "como se",
       "cómo se",
       "ayudame a",
-      "ayúdame a",
-      "explicame como",
-      "explícame cómo",
-      "guiame para",
-      "guíame para",
-      "orientame",
-      "oriéntame",
-      "como hago pa",
-      "cómo hago pa"
+      "ayúdame a"
     );
   }
 
@@ -3209,31 +2677,22 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "llevame",
       "llévame",
       "llevarme",
-      "guiame",
-      "guíame",
-      "dirigeme",
-      "dirígeme",
       "abre",
       "abrime",
-      "ábrime",
-      "abreme",
-      "ábreme",
       "quiero ir",
       "quiero entrar",
       "ir al",
       "ir a",
       "ve al",
       "ve a",
-      "vamos al",
-      "vamos a",
+      "muestrame",
+      "muéstrame",
+      "mostrame",
+      "muestre",
       "mandame",
       "mándame",
-      "pasame",
-      "pásame",
-      "tirame pa",
-      "tírame pa",
-      "llevame pa",
-      "llévame pa"
+      "vamos al",
+      "vamos a"
     );
   }
 
@@ -3274,6 +2733,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "qué eventos hay",
       "que eventos hay disponibles",
       "qué eventos hay disponibles",
+      "que hay disponible",
+      "qué hay disponible",
       "mostrar eventos",
       "muestrame eventos",
       "muéstrame eventos",
@@ -3282,25 +2743,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "eventos disponibles",
       "hay eventos en",
       "si hay eventos en",
+      "sí hay eventos en",
       "que hay en",
       "qué hay en",
-      "hay algo en",
-      "que planes hay",
-      "qué planes hay",
-      "que hay para hacer",
-      "qué hay para hacer",
-      "que actividades hay",
-      "qué actividades hay",
-      "mostrame que hay",
-      "que parche hay",
-      "qué parche hay",
-      "que vuelta hay",
-      "qué vuelta hay",
-      "que hay pa hacer",
-      "qué hay pa hacer",
-      "hay algo pa hoy",
-      "qué se mueve"
-    );
+      "hay algo en");
   }
 
   private boolean isPaymentMethodsQuestion(String message) {
@@ -3311,26 +2757,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "cómo puedo pagar",
       "con que puedo pagar",
       "con qué puedo pagar",
-      "formas de pago",
-      "como se paga",
-      "cómo se paga",
-      "como hago el pago",
-      "cómo hago el pago",
-      "reciben tarjeta",
-      "aceptan tarjeta",
-      "aceptan nequi",
-      "se puede pagar por pse",
-      "medios de pago",
-      "formas para pagar",
-      "con que medios pago",
-      "con qué medios pago",
-      "puedo pagar con nequi",
-      "puedo pagar con tarjeta",
-      "aceptan pse",
-      "aceptan debito",
-      "aceptan débito",
-      "aceptan credito",
-      "aceptan crédito"
+      "formas de pago"
     );
   }
 
@@ -3339,51 +2766,34 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "terminos y condiciones",
       "términos y condiciones",
       "terminos",
-      "términos",
-      "reglas de uso",
-      "condiciones de uso",
-      "acuerdo de uso",
-      "condiciones del servicio"
+      "términos"
     );
   }
 
   private boolean isConductRulesQuestion(String message) {
-    String normalized = normalize(message);
-
-    boolean asksForRules = containsAny(normalized,
-      "reglas",
-      "normas",
-      "esta permitido",
-      "no esta permitido",
-      "se puede",
-      "puedo decir",
-      "puedo escribir",
-      "comportamiento",
-      "convivencia"
-    );
-
-    boolean topic = containsAny(normalized,
+    return containsAny(message,
       "grosero",
       "groserias",
+      "groserías",
       "insultar",
       "insultos",
       "ofensivo",
       "ofensiva",
+      "reglas de convivencia",
+      "reglas de respeto",
+      "reglas de comportamiento",
+      "que no esta permitido",
+      "qué no está permitido",
       "acoso",
       "amenazas",
       "spam",
-      "lenguaje inapropiado",
-      "discriminacion",
-      "fraude"
-    );
-
-    return asksForRules && topic;
+      "lenguaje inapropiado");
   }
 
   private String buildConductRulesReply() {
     return """
                 Sí. En ParchaFace no deberías publicar ni enviar contenido ofensivo, insultos, amenazas, acoso, discriminación, fraude, spam o información engañosa.
-                Tampoco deberías usar lenguaje grosero para atacar a otras personas, humillar, hostigar, intimidar, publicar eventos falsos o compartir contenido ilegal.
+                Tampoco deberías usar lenguaje grosero para atacar a otras personas, publicar eventos falsos o compartir contenido ilegal.
                 Si alguien incumple estas reglas, el contenido puede ser reportado, removido y la cuenta puede ser suspendida o bloqueada por administración.
                 """.trim();
   }
@@ -3393,11 +2803,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "politica de privacidad",
       "política de privacidad",
       "privacidad",
-      "datos personales",
-      "tratamiento de datos",
-      "mis datos",
-      "proteccion de datos",
-      "protección de datos"
+      "datos personales"
     );
   }
 
@@ -3411,15 +2817,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "indrive",
       "picap",
       "como me voy",
-      "cómo me voy",
-      "como llego",
-      "cómo llego",
-      "como me transporto",
-      "cómo me transporto",
-      "como me muevo",
-      "cómo me muevo",
-      "como regreso",
-      "cómo regreso"
+      "cómo me voy"
     );
   }
 
@@ -3434,11 +2832,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "policia",
       "policía",
       "linea 123",
-      "línea 123",
-      "urgencias",
-      "llamar a emergencias",
-      "numero de bomberos",
-      "número de bomberos"
+      "línea 123"
     );
   }
 
@@ -3453,18 +2847,11 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "donde es la seccion",
       "dónde es la sección",
       "donde estan los comentarios",
-      "dónde están los comentarios",
-      "como entro",
-      "cómo entro",
-      "en donde queda",
-      "en dónde queda",
-      "por donde entro",
-      "por dónde entro"
+      "dónde están los comentarios"
     );
   }
 
   private boolean seemsRelevantToParchaFace(String message) {
-    String normalized = normalize(message);
     return containsAny(message,
       "parchaface",
       "evento",
@@ -3483,11 +2870,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "crear evento",
       "inscrib",
       "pago",
-      "pagar",
-      "entrada",
-      "boleta",
-      "boleto",
-      "ticket",
       "privacidad",
       "terminos",
       "términos",
@@ -3500,29 +2882,23 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "hola",
       "gracias",
       "chao",
-      "jaja",
-      "parche",
-      "rumba",
-      "show",
-      "concierto"
-    ) || detectCategory(normalized) != null || !detectCities(message).isEmpty();
+      "jaja"
+    );
   }
 
   private boolean isDirectManipulationRequest(String message) {
-    String normalized = normalize(message);
-
-    return normalized.contains("creame un evento")
-      || normalized.contains("crea un evento por mi")
-      || normalized.contains("hazme un evento")
-      || normalized.contains("editalo por mi")
-      || normalized.contains("editalo por mi")
-      || normalized.contains("edita el evento por mi")
-      || normalized.contains("publicalo por mi")
-      || normalized.contains("sube el evento por mi")
-      || normalized.contains("monta el evento por mi")
-      || normalized.contains("armame el evento")
-      || normalized.contains("hazlo por mi")
-      || normalized.contains("rellename eso por mi");
+    return containsAny(message,
+      "creame un evento",
+      "créame un evento",
+      "crea un evento por mi",
+      "crea un evento por mí",
+      "hazme un evento",
+      "editalo por mi",
+      "edítalo por mí",
+      "edita el evento por mi",
+      "edita el evento por mí",
+      "publicalo por mi",
+      "publícalo por mí");
   }
 
   private boolean containsProfanity(String message) {
@@ -3534,81 +2910,63 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       .replace("4", "a")
       .replace("5", "s")
       .replace("7", "t")
-      .replace("$", "s")
-      .replaceAll("[^a-z0-9ñ\\s]", " ")
-      .replaceAll("\\s+", " ")
+      .replaceAll("[^a-z0-9ñ\s]", " ")
+      .replaceAll("\s+", " ")
       .trim();
 
     return Pattern.compile(
-      "\\b(?:hp|hpta|hptas|hijueputa|hijueputas|hijo de puta|hija de puta|hijodeputa|jueputa|jueputa|jueputas|puta|puto|putita|putito|putazo|gonorrea|gonorreas|gono|carechimba|care monda|caremonda|care mond[aá]|careverga|careculo|malparido|malparida|malparidos|marica|marico|maricon|maricona|mariquita|pendejo|pendeja|pendejada|cabron|cabrona|huevon|huevona|wevon|webon|guevon|guevona|culero|culera|culiado|culiada|mierda|mierdero|imbecil|imbeciles|idiota|idiotas|estupido|estupida|tarado|tarada|baboso|babosa|mamaguevo|mamahuevo|comemierda|pirobo|piroba|zorra|perra|cono|coño|carajo|chingar|chingada|chingado|pinche|pelotudo|pelotuda|boludo|boluda|verga|vergas|mk|mka|gonorreita|lampara|lámpara|sapo hijueputa|triplehijueputa|hpta madre|hp madre|fuck|fucking|fucker|motherfucker|mother fucker|shit|bullshit|asshole|ass hole|bitch|son of a bitch|bastard|slut|whore|dick|cock|pussy|cunt|retard|dumbass|jackass|piece of shit)\\b"
+      "\b(?:hp|hpta|hptas|hijueputa|hijo de puta|hija de puta|jueputa|puta|puto|putita|putito|gonorrea|gono|carechimba|caremonda|malparido|malparida|marica|maricon|mariquita|pendejo|pendeja|cabron|cabrona|huevon|huevona|wevon|webon|guevon|culero|culera|culiado|culiada|mierda|imbecil|idiota|estupido|tarado|mamaguevo|mamahuevo|comemierda|pirobo|zorra|perra|coño|carajo|chingar|chingada|chingado|pinche|pelotudo|pelotuda|boludo|boluda|verga|fuck|fucking|fucker|motherfucker|mother fucker|shit|bullshit|asshole|ass hole|bitch|son of a bitch|bastard|slut|whore|dick|cock|pussy|cunt|retard|dumbass|jackass|piece of shit)\b"
     ).matcher(normalized).find();
   }
 
   private String detectCategory(String message) {
     String normalized = normalize(message);
 
-    int deporte = scoreVocabulary(normalized,
-      "futbol", "deporte", "deportes", "deportivo", "deportiva", "partido", "cancha",
-      "ejercicio", "competencia", "torneo", "microfutbol", "futsal", "baloncesto",
-      "basket", "basketball", "voleibol", "voley", "running", "trote", "ciclismo",
-      "ciclovia", "natacion", "tenis", "padel", "boxeo", "crossfit", "gym",
-      "gimnasio", "senderismo", "trekking", "patinaje", "maraton", "maratón", "yoga", "spinning"
-    );
-
-    int musica = scoreVocabulary(normalized,
-      "musica", "concierto", "conciertos", "show", "toque", "presentacion", "presentación",
-      "dj", "banda", "festival", "karaoke", "salsa", "bachata", "vallenato",
-      "reggaeton", "electronica", "techno", "house", "rap", "hip hop", "jazz",
-      "orquesta", "cantante", "acustico", "acustica", "rock", "metal", "indie", "guaracha", "merengue"
-    );
-
-    int arte = scoreVocabulary(normalized,
-      "arte", "artistico", "artistica", "exposicion", "galeria", "museo", "teatro",
-      "cine", "pelicula", "stand up", "comedia", "poesia", "danza", "cultural",
-      "fotografia", "pintura", "impro", "obra", "performance"
-    );
-
-    int gastronomia = scoreVocabulary(normalized,
-      "gastronomia", "comida", "comer", "restaurante", "cenar", "almorzar", "brunch",
-      "desayuno", "cafe", "cafeteria", "degustacion", "cata", "vino", "asado",
-      "picada", "hamburguesa", "pizza", "coctel", "cocteles", "cocteleria", "tragos", "food truck", "tapas"
-    );
-
-    int networking = scoreVocabulary(normalized,
-      "networking", "network", "emprendedores", "contactos", "negocios", "emprendimiento",
-      "charla", "taller", "workshop", "conferencia", "congreso", "meetup",
-      "feria", "seminario", "masterclass", "panel", "ponencia", "speakers"
-    );
-
-    int gaming = scoreVocabulary(normalized,
-      "gaming", "gamer", "videojuegos", "videojuego", "juegos", "esports", "e sports", "e-sports",
-      "lan party", "consola", "playstation", "ps5", "ps4", "xbox", "nintendo", "switch", "steam",
-      "fortnite", "fifa", "fc 25", "fc25", "valorant", "lol", "league of legends", "dota", "free fire", "minecraft", "cod", "warzone"
-    );
-
-    int fiestas = scoreVocabulary(normalized,
-      "fiesta", "fiestas", "rumba", "rumbita", "parche", "farra", "party",
-      "after party", "discoteca", "disco", "perreo", "guaro", "trago",
-      "pool party", "electro", "electronica", "techno", "house", "baile",
-      "rumbeadero", "after", "farrita", "parranda", "tomadero"
-    );
-
-    int best = Math.max(
-      Math.max(Math.max(deporte, musica), Math.max(arte, gastronomia)),
-      Math.max(networking, Math.max(gaming, fiestas))
-    );
-
-    if (best == 0) {
-      return null;
+    if (containsAny(normalized,
+      "futbol", "fútbol", "deporte", "deportes",
+      "deportivo", "deportiva", "deporticvo", "partido", "cancha",
+      "ejercicio", "competencia", "torneo")) {
+      return "DEPORTE";
     }
 
-    if (best == deporte) return "DEPORTE";
-    if (best == musica) return "MUSICA";
-    if (best == arte) return "ARTE";
-    if (best == gastronomia) return "GASTRONOMIA";
-    if (best == networking) return "NETWORKING";
-    if (best == gaming) return "GAMING";
-    return "FIESTAS";
+    if (containsAny(normalized,
+      "musica", "música", "concierto", "conciertos",
+      "show", "toque", "presentacion", "presentación",
+      "dj", "banda", "festival")) {
+      return "MUSICA";
+    }
+
+    if (containsAny(normalized,
+      "arte", "artistico", "artístico", "exposicion", "exposición")) {
+      return "ARTE";
+    }
+
+    if (containsAny(normalized,
+      "gastronomia", "gastronomía", "comida", "comer",
+      "restaurante", "cenar", "almorzar", "brunch")) {
+      return "GASTRONOMIA";
+    }
+
+    if (containsAny(normalized,
+      "networking", "emprendedores", "contactos", "negocios")) {
+      return "NETWORKING";
+    }
+
+    if (containsAny(normalized,
+      "gaming", "videojuegos", "videojuego", "juegos", "esports", "e-sports",
+      "fortnite", "fifa", "valorant", "lol", "league of legends",
+      "playstation", "xbox", "nintendo")) {
+      return "GAMING";
+    }
+
+    if (containsAny(normalized,
+      "fiesta", "fiestas", "rumba", "rumbita", "plancito", "parche", "farra",
+      "poolparty", "pool party", "sintetica", "sintética", "electronica",
+      "electrónica", "techno", "house", "after party")) {
+      return "FIESTAS";
+    }
+
+    return null;
   }
 
   private String detectCity(String message) {
@@ -3648,10 +3006,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       return matches.stream().toList();
     }
 
-    Matcher matcher = Pattern.compile("(?i)\\b(?:en|por|desde|cerca de|cerca a|a)\\s+([a-zA-Záéíóúñ\\s]{3,40})").matcher(message);
+    Matcher matcher = Pattern.compile("(?i)\b(?:en|por|desde|cerca de|cerca a|a)\s+([a-zA-Záéíóúñ\s]{3,40})").matcher(message);
     while (matcher.find()) {
       String raw = matcher.group(1)
-        .replaceAll("(?i)\\b(gratis|de pago|pago|pagado|a las|con|sin|para|porfa|por favor|y|pero|si|sí|si es|quiero|necesito|evento|eventos|azar|aleatorio|random|ramdom)\\b.*$", "")
+        .replaceAll("(?i)\b(gratis|de pago|pago|pagado|a las|con|sin|para|porfa|por favor|y|pero|si|sí|si es|quiero|necesito|evento|eventos|azar|aleatorio|random|ramdom)\b.*$", "")
         .trim();
 
       String bestAfterPrefix = findBestMatchingCity(raw, knownCities);
@@ -3701,11 +3059,11 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   private String detectZone(String message) {
     String normalized = normalize(message);
 
-    if (containsAny(normalized, "zona norte", "norte", "al norte", "por el norte", "norte de la ciudad")) return "norte";
-    if (containsAny(normalized, "zona sur", "sur", "al sur", "por el sur", "sur de la ciudad")) return "sur";
-    if (containsAny(normalized, "zona centro", "centro", "centro de la ciudad", "por el centro")) return "centro";
-    if (containsAny(normalized, "oriente", "zona oriental", "al oriente", "por el oriente")) return "oriente";
-    if (containsAny(normalized, "occidente", "zona occidental", "al occidente", "por el occidente")) return "occidente";
+    if (containsAny(normalized, "zona norte", "norte")) return "norte";
+    if (containsAny(normalized, "zona sur", "sur")) return "sur";
+    if (containsAny(normalized, "zona centro", "centro")) return "centro";
+    if (containsAny(normalized, "oriente")) return "oriente";
+    if (containsAny(normalized, "occidente")) return "occidente";
 
     return null;
   }
@@ -3738,9 +3096,9 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   private Integer detectBudget(String message) {
     String normalized = normalize(message);
 
-    if (containsAny(normalized, "barato", "baratico", "economico", "económico", "bajo", "poquita plata", "sin mucha plata", "presupuesto corto", "comodo", "cómodo")) return 20000;
-    if (containsAny(normalized, "medio", "mas o menos", "más o menos", "intermedio", "normal")) return 50000;
-    if (containsAny(normalized, "alto", "caro", "carito", "premium", "sin limite", "sin límite")) return 100000;
+    if (containsAny(normalized, "barato", "economico", "económico", "bajo")) return 20000;
+    if (containsAny(normalized, "medio")) return 50000;
+    if (containsAny(normalized, "alto")) return 100000;
 
     Matcher matcher = BUDGET_PATTERN.matcher(message);
     if (!matcher.find()) return null;
@@ -3766,11 +3124,11 @@ public class AiAssistantServiceImpl implements AiAssistantService {
   }
 
   private Boolean detectYesNo(String normalized) {
-    if (containsAny(normalized, "si", "sí", "claro", "de una", "quiero", "dale", "sisas", "obvio", "hagale", "hágale", "de one", "me sirve", "copiado", "ok", "listo")) {
+    if (containsAny(normalized, "si", "sí", "claro", "de una", "quiero", "dale")) {
       return true;
     }
 
-    if (containsAny(normalized, "no", "sin eso", "no quiero", "no necesito", "nel", "nelson", "nope", "negativo", "paso", "mejor no")) {
+    if (containsAny(normalized, "no", "sin eso", "no quiero", "no necesito")) {
       return false;
     }
 
@@ -3782,17 +3140,17 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     if (containsAny(normalized,
       "sin transporte", "no transporte", "no quiero transporte", "no necesito transporte",
-      "sin taxi", "sin uber", "sin didi", "sin indrive", "sin picap", "yo me voy por mi cuenta", "yo llego solo", "yo llego sola")) {
+      "sin taxi", "sin uber", "sin didi", "sin indrive", "sin picap")) {
       return false;
     }
 
     if (containsAny(normalized,
       "con transporte", "incluye transporte", "quiero transporte", "necesito transporte",
-      "con taxi", "con uber", "con didi", "con indrive", "con picap", "ayudame con el transporte", "ayúdame con el transporte", "quiero saber como llegar", "quiero saber cómo llegar")) {
+      "con taxi", "con uber", "con didi", "con indrive", "con picap")) {
       return true;
     }
 
-    if (containsAny(normalized, "transporte", "taxi", "uber", "didi", "indrive", "picap", "movilidad", "como llego", "cómo llego")) {
+    if (containsAny(normalized, "transporte", "taxi", "uber", "didi", "indrive", "picap")) {
       return true;
     }
 
@@ -3804,17 +3162,17 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     if (containsAny(normalized,
       "sin comida", "no comida", "no quiero comida", "no quiero restaurantes", "sin restaurantes",
-      "sin comer", "sin cena", "sin almuerzo", "sin brunch", "no quiero ir a comer", "sin traguito", "sin tragos")) {
+      "sin comer", "sin cena", "sin almuerzo", "sin brunch")) {
       return false;
     }
 
     if (containsAny(normalized,
       "con comida", "quiero comida", "quiero restaurantes", "quiero comer",
-      "con restaurantes", "con cena", "con almuerzo", "con brunch", "con tragos", "con cocteles", "con cócteles", "quiero ir a comer algo")) {
+      "con restaurantes", "con cena", "con almuerzo", "con brunch")) {
       return true;
     }
 
-    if (containsAny(normalized, "comer", "restaurante", "comida", "cenar", "almorzar", "brunch", "desayunar", "tragos", "cocteles", "cócteles", "cafecito")) {
+    if (containsAny(normalized, "comer", "restaurante", "comida", "cenar", "almorzar", "brunch")) {
       return true;
     }
 
@@ -3835,32 +3193,18 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
   private boolean containsAny(String source, String... candidates) {
     String normalizedSource = normalize(source);
-    Set<String> sourceTokens = comparableTokenSet(normalizedSource);
 
     for (String candidate : candidates) {
       String normalizedCandidate = normalize(candidate);
-      if (normalizedCandidate.isBlank()) {
-        continue;
-      }
 
       if (normalizedSource.contains(normalizedCandidate)) {
         return true;
       }
 
-      Set<String> candidateTokens = comparableTokenSet(normalizedCandidate);
-
-      if (!candidateTokens.isEmpty() && sourceTokens.containsAll(candidateTokens)) {
+      if (!normalizedCandidate.contains(" ")
+        && normalizedCandidate.length() >= 5
+        && fuzzyTokenMatch(normalizedSource, normalizedCandidate)) {
         return true;
-      }
-
-      if (candidateTokens.size() > 1 && overlapRatio(sourceTokens, candidateTokens) >= 0.80d) {
-        return true;
-      }
-
-      for (String token : candidateTokens) {
-        if (token.length() >= 4 && fuzzyTokenMatch(normalizedSource, token)) {
-          return true;
-        }
       }
     }
 
@@ -3869,14 +3213,11 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
   private boolean fuzzyTokenMatch(String source, String candidate) {
     String[] tokens = source.split("[^a-z0-9ñ]+");
-    String comparableCandidate = toComparableToken(candidate);
-    int maxDistance = comparableCandidate.length() >= 8 ? 2 : 1;
+    int maxDistance = candidate.length() >= 8 ? 2 : 1;
 
     for (String token : tokens) {
-      String comparableToken = toComparableToken(token);
-      if (comparableToken.isBlank() || comparableToken.length() < 4) continue;
-
-      if (editDistance(comparableToken, comparableCandidate) <= maxDistance) {
+      if (token.isBlank() || token.length() < 4) continue;
+      if (editDistance(token, candidate) <= maxDistance) {
         return true;
       }
     }
@@ -3915,104 +3256,23 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       .replace("ó", "o")
       .replace("ú", "u")
       .replace("ü", "u")
-      .replaceAll("\\bq\\b", "que")
-      .replaceAll("\\bk\\b", "que")
-      .replaceAll("\\bxq\\b", "porque")
-      .replaceAll("\\bpa\\b", "para")
-      .replaceAll("\\bpal\\b", "para el")
-      .replaceAll("\\bparce\\b", "amigo")
-      .replaceAll("\\bparcero\\b", "amigo")
-      .replaceAll("\\bbro\\b", "amigo")
-      .replaceAll("\\bmano\\b", "amigo")
-      .replaceAll("\\bqlq\\b", "que lo que")
-      .replaceAll("\\bklk\\b", "que lo que")
-      .replaceAll("[^a-z0-9ñ\\s]", " ")
-      .replaceAll("\\s+", " ")
-      .trim();
-
-    normalized = canonicalizeSemanticText(normalized)
-      .replaceAll("\\s+", " ")
+      .replaceAll("\bq\b", "que")
+      .replaceAll("\bk\b", "que")
+      .replaceAll("\bxq\b", "porque")
+      .replaceAll("\bpa\b", "para")
+      .replaceAll("\bpal\b", "para el")
+      .replaceAll("\bpal\s+", "para el ")
+      .replaceAll("\bparce\b", "amigo")
+      .replaceAll("\bparcero\b", "amigo")
+      .replaceAll("\bbro\b", "amigo")
+      .replaceAll("\bmano\b", "amigo")
+      .replaceAll("\bqlq\b", "que lo que")
+      .replaceAll("\bklk\b", "que lo que")
+      .replaceAll("[^a-z0-9ñ\s]", " ")
+      .replaceAll("\s+", " ")
       .trim();
 
     return normalized;
-  }
-
-  private String canonicalizeSemanticText(String value) {
-    String normalized = value;
-
-    normalized = normalized
-      .replaceAll("\\b(planecito|planazo|plancito|salidita|salidota|salida|parchecito|parchazo)\\b", "plan")
-      .replaceAll("\\b(vaina|vueltica|vuelta|actividad|actividades|cosita|planecito)\\b", "evento")
-      .replaceAll("\\b(sugiereme|sugierime|sugiere|proponme|propon|tirame|lanzame|ponme|botame|tirame algo)\\b", "recomiendame")
-      .replaceAll("\\b(dirigeme|guiame|mandame|pasame|llevame pa)\\b", "llevame")
-      .replaceAll("\\b(meterme|ingresar|loguearme|logearme)\\b", "entrar")
-      .replaceAll("\\b(encuentrame|encontrame|consigueme|traeme)\\b", "buscame")
-      .replaceAll("\\b(muestrame|mostrame|ensename|enseñame)\\b", "muestrame")
-      .replaceAll("\\b(rumbear|farrear|perrear|rumbiar)\\b", "fiesta")
-      .replaceAll("\\b(parchado|parchadito|tranqui|relajado|suavecito|relax)\\b", "plan tranquilo")
-      .replaceAll("\\b(musiquita|musicita|rolita)\\b", "musica")
-      .replaceAll("\\b(comelona|comidita|mecato)\\b", "comida")
-      .replaceAll("\\b(gym)\\b", "gimnasio")
-      .replaceAll("\\b(medallo)\\b", "medellin")
-      .replaceAll("\\b(boleta|boletas|boleto|boletos|ticket|tickets|entrada|entradas|cover)\\b", "entrada")
-      .replaceAll("\\b(plata|lucas)\\b", "presupuesto");
-
-    return normalized;
-  }
-
-  private Set<String> comparableTokenSet(String text) {
-    LinkedHashSet<String> tokens = new LinkedHashSet<>();
-    for (String rawToken : normalize(text).split("\\s+")) {
-      String token = toComparableToken(rawToken);
-      if (token.length() >= 3) {
-        tokens.add(token);
-      }
-    }
-    return tokens;
-  }
-
-  private String toComparableToken(String token) {
-    String normalized = normalize(token);
-
-    if (normalized.endsWith("es") && normalized.length() > 4) {
-      normalized = normalized.substring(0, normalized.length() - 2);
-    } else if (normalized.endsWith("s") && normalized.length() > 4) {
-      normalized = normalized.substring(0, normalized.length() - 1);
-    }
-
-    if (normalized.endsWith("cito") || normalized.endsWith("cita")) {
-      normalized = normalized.substring(0, normalized.length() - 4);
-    }
-
-    return normalized.trim();
-  }
-
-  private double overlapRatio(Set<String> sourceTokens, Set<String> candidateTokens) {
-    if (candidateTokens.isEmpty()) {
-      return 0;
-    }
-
-    long matched = candidateTokens.stream().filter(sourceTokens::contains).count();
-    return (double) matched / (double) candidateTokens.size();
-  }
-
-  private int scoreVocabulary(String normalizedMessage, String... vocabulary) {
-    int score = 0;
-    Set<String> seen = new HashSet<>();
-
-    for (String term : vocabulary) {
-      String normalizedTerm = normalize(term);
-      if (normalizedTerm.isBlank() || seen.contains(normalizedTerm)) {
-        continue;
-      }
-
-      if (containsAny(normalizedMessage, term)) {
-        score += normalizedTerm.contains(" ") ? 3 : 2;
-        seen.add(normalizedTerm);
-      }
-    }
-
-    return score;
   }
 
   private String safe(String value) {
@@ -4106,22 +3366,6 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     private String lastTopicQuery;
     private String mood;
     private DiscoveryContext lastDiscoveryContext = DiscoveryContext.NONE;
-
-    private Integer currentEventId;
-    private String currentEventTitle;
-    private String currentEventCity;
-    private String currentEventCategory;
-    private Integer currentEventPrice;
-    private Boolean currentEventIsFree;
-
-    private List<Integer> lastShownEventIds = new ArrayList<>();
-    private List<String> lastShownEventTitles = new ArrayList<>();
-    private Integer lastFocusedEventId;
-
-    private String lastRoute;
-    private String lastUserMessage;
-    private String lastAssistantMessage;
-
     private long updatedAt;
 
     private void touch() {
@@ -4157,13 +3401,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
       "guía",
       "instrucciones",
       "explicame",
-      "explícame",
-      "orientame",
-      "oriéntame",
-      "como hago pa",
-      "cómo hago pa",
-      "como funciona",
-      "cómo funciona"
+      "explícame"
     );
   }
 }
