@@ -374,4 +374,11 @@ public class UsuarioServiceImpl implements UsuarioService {
       );
     }
   }
+
+  @Override
+  public void eliminarMiCuenta(String correo) {
+    Usuario usuario = getUsuarioPorCorreo(correo);
+    usuario.setEstado(Estado.CANCELADO);
+    usuarioRepository.save(usuario);
+  }
 }

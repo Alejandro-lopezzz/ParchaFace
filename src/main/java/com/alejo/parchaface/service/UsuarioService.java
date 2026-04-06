@@ -41,4 +41,6 @@ public interface UsuarioService {
   Usuario actualizarFotoPortada(Integer idUsuario, MultipartFile file);
 
   Usuario eliminarFotoPerfil(Integer idUsuario);
+
+  void eliminarMiCuenta(String correo);
 }

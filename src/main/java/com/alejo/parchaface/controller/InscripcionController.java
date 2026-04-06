@@ -1,5 +1,6 @@
 package com.alejo.parchaface.controller;
 
+import com.alejo.parchaface.dto.InscritoEventoResponse;
 import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.service.InscripcionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,6 @@ public class InscripcionController {
 
     @PutMapping("/{id}")
     public Inscripcion updateInscripcion(@PathVariable Integer id, @RequestBody Inscripcion inscripcion) {
-        // Seteamos id del path en el objeto antes de actualizar
         inscripcion.setIdInscripcion(id);
         return inscripcionService.updateInscripcion(inscripcion);
     }
@@ -47,7 +47,7 @@ public class InscripcionController {
     @PostMapping("/eventos/{idEvento}/inscribirme")
     public ResponseEntity<?> inscribirme(@PathVariable Integer idEvento, Principal principal) {
 
-        String correo = principal.getName(); // viene del JWT
+        String correo = principal.getName();
         Inscripcion ins = inscripcionService.inscribirseAEvento(idEvento, correo);
 
         return ResponseEntity.ok(Map.of(
@@ -71,5 +71,14 @@ public class InscripcionController {
         ));
     }
 
+    @GetMapping("/eventos/{idEvento}/inscritos")
+    public ResponseEntity<List<InscritoEventoResponse>> obtenerInscritosDelEvento(
+            @PathVariable Integer idEvento,
+            Principal principal
+    ) {
+        String correo = principal.getName();
+        List<InscritoEventoResponse> inscritos = inscripcionService.obtenerInscritosDeEvento(idEvento, correo);
+        return ResponseEntity.ok(inscritos);
+    }
 
 }

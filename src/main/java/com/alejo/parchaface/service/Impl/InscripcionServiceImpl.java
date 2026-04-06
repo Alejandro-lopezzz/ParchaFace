@@ -1,10 +1,12 @@
 package com.alejo.parchaface.service.Impl;
 
+import com.alejo.parchaface.dto.InscritoEventoResponse;
 import com.alejo.parchaface.service.NotificacionService;
 import com.alejo.parchaface.model.Evento;
 import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.model.Usuario;
 import com.alejo.parchaface.model.enums.EstadoInscripcion;
+import com.alejo.parchaface.model.enums.Rol;
 import com.alejo.parchaface.repository.EventoRepository;
 import com.alejo.parchaface.repository.InscripcionRepository;
 import com.alejo.parchaface.repository.UsuarioRepository;
@@ -71,6 +73,31 @@ public class InscripcionServiceImpl implements InscripcionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<InscritoEventoResponse> obtenerInscritosDeEvento(Integer idEvento, String correoSolicitante) {
+        Usuario solicitante = usuarioRepository.findByCorreo(correoSolicitante)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+        Evento evento = eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+        boolean esAdmin = solicitante.getRol() == Rol.ADMINISTRADOR;
+        boolean esOrganizador = evento.getOrganizador() != null
+                && evento.getOrganizador().getIdUsuario() != null
+                && evento.getOrganizador().getIdUsuario().equals(solicitante.getIdUsuario());
+
+        if (!esAdmin && !esOrganizador) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para ver los inscritos");
+        }
+
+        return inscripcionRepository
+                .findByEvento_IdEventoAndEstadoInscripcionOrderByFechaInscripcionDesc(idEvento, EstadoInscripcion.vigente)
+                .stream()
+                .map(this::mapToInscritoEventoResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
     public void deleteInscripcion(Integer id) {
         inscripcionRepository.deleteById(id);
     }
@@ -97,98 +124,98 @@ public class InscripcionServiceImpl implements InscripcionService {
     }
 
     private Inscripcion crearOReactivarInscripcion(Integer idEvento, String correo, boolean permitirSiYaVigente) {
-      Usuario usuario = usuarioRepository.findByCorreo(correo)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
 
-      if (usuario.getRol() == com.alejo.parchaface.model.enums.Rol.ADMINISTRADOR) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El administrador no puede inscribirse a eventos");
-      }
-
-      usuarioSuspensionService.validarNoSuspendidoParaEventosEInscripciones(usuario);
-
-      Evento evento = eventoRepository.findById(idEvento)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
-
-      if (evento.getOrganizador() != null
-        && evento.getOrganizador().getIdUsuario() != null
-        && evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "El organizador no puede inscribirse a su propio evento");
-      }
-
-      Optional<Inscripcion> existenteOpt = inscripcionRepository
-        .findByEvento_IdEventoAndUsuario_IdUsuario(idEvento, usuario.getIdUsuario());
-
-      if (existenteOpt.isPresent()) {
-        Inscripcion existente = existenteOpt.get();
-
-        if (existente.getEstadoInscripcion() == EstadoInscripcion.vigente) {
-          if (permitirSiYaVigente) {
-            return existente;
-          }
-          throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya estás inscrito en este evento");
+        if (usuario.getRol() == com.alejo.parchaface.model.enums.Rol.ADMINISTRADOR) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El administrador no puede inscribirse a eventos");
         }
 
-        existente.setEstadoInscripcion(EstadoInscripcion.vigente);
-        existente.setFechaInscripcion(LocalDate.now());
+        usuarioSuspensionService.validarNoSuspendidoParaEventosEInscripciones(usuario);
 
-        Inscripcion reactivada = inscripcionRepository.save(existente);
+        Evento evento = eventoRepository.findById(idEvento)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado"));
+
+        if (evento.getOrganizador() != null
+                && evento.getOrganizador().getIdUsuario() != null
+                && evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El organizador no puede inscribirse a su propio evento");
+        }
+
+        Optional<Inscripcion> existenteOpt = inscripcionRepository
+                .findByEvento_IdEventoAndUsuario_IdUsuario(idEvento, usuario.getIdUsuario());
+
+        if (existenteOpt.isPresent()) {
+            Inscripcion existente = existenteOpt.get();
+
+            if (existente.getEstadoInscripcion() == EstadoInscripcion.vigente) {
+                if (permitirSiYaVigente) {
+                    return existente;
+                }
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya estás inscrito en este evento");
+            }
+
+            existente.setEstadoInscripcion(EstadoInscripcion.vigente);
+            existente.setFechaInscripcion(LocalDate.now());
+
+            Inscripcion reactivada = inscripcionRepository.save(existente);
+
+            notificacionService.crearNotificacionConReferencia(
+                    usuario,
+                    "Te inscribiste al evento: " + evento.getTitulo(),
+                    "EVENTO",
+                    evento.getIdEvento()
+            );
+
+            if (evento.getOrganizador() != null
+                    && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+                notificacionService.crearNotificacionConReferencia(
+                        evento.getOrganizador(),
+                        usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
+                        "EVENTO",
+                        evento.getIdEvento()
+                );
+            }
+
+            return reactivada;
+        }
+
+        Integer cupo = evento.getCupo();
+        long inscritos = inscripcionRepository.countByEvento_IdEventoAndEstadoInscripcion(
+                idEvento,
+                EstadoInscripcion.vigente
+        );
+
+        if (cupo != null && cupo > 0 && inscritos >= cupo) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El evento ya no tiene cupo");
+        }
+
+        Inscripcion ins = new Inscripcion();
+        ins.setUsuario(usuario);
+        ins.setEvento(evento);
+        ins.setFechaInscripcion(LocalDate.now());
+        ins.setEstadoInscripcion(EstadoInscripcion.vigente);
+
+        Inscripcion guardada = inscripcionRepository.save(ins);
 
         notificacionService.crearNotificacionConReferencia(
-          usuario,
-          "Te inscribiste al evento: " + evento.getTitulo(),
-          "EVENTO",
-          evento.getIdEvento()
+                usuario,
+                "Te inscribiste al evento: " + evento.getTitulo(),
+                "EVENTO",
+                evento.getIdEvento()
         );
 
         if (evento.getOrganizador() != null
-          && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-          notificacionService.crearNotificacionConReferencia(
-            evento.getOrganizador(),
-            usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
-            "EVENTO",
-            evento.getIdEvento()
-          );
+                && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
+            notificacionService.crearNotificacionConReferencia(
+                    evento.getOrganizador(),
+                    usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
+                    "EVENTO",
+                    evento.getIdEvento()
+            );
         }
 
-        return reactivada;
-      }
-
-      Integer cupo = evento.getCupo();
-      long inscritos = inscripcionRepository.countByEvento_IdEventoAndEstadoInscripcion(
-        idEvento,
-        EstadoInscripcion.vigente
-      );
-
-      if (cupo != null && cupo > 0 && inscritos >= cupo) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "El evento ya no tiene cupo");
-      }
-
-      Inscripcion ins = new Inscripcion();
-      ins.setUsuario(usuario);
-      ins.setEvento(evento);
-      ins.setFechaInscripcion(LocalDate.now());
-      ins.setEstadoInscripcion(EstadoInscripcion.vigente);
-
-      Inscripcion guardada = inscripcionRepository.save(ins);
-
-      notificacionService.crearNotificacionConReferencia(
-        usuario,
-        "Te inscribiste al evento: " + evento.getTitulo(),
-        "EVENTO",
-        evento.getIdEvento()
-      );
-
-      if (evento.getOrganizador() != null
-        && !evento.getOrganizador().getIdUsuario().equals(usuario.getIdUsuario())) {
-        notificacionService.crearNotificacionConReferencia(
-          evento.getOrganizador(),
-          usuario.getNombre() + " se inscribió a tu evento: " + evento.getTitulo(),
-          "EVENTO",
-          evento.getIdEvento()
-        );
-      }
-
-      return guardada;
+        return guardada;
     }
 
     @Override
@@ -224,5 +251,18 @@ public class InscripcionServiceImpl implements InscripcionService {
                     evento.getIdEvento()
             );
         }
+    }
+
+    private InscritoEventoResponse mapToInscritoEventoResponse(Inscripcion inscripcion) {
+        Usuario usuario = inscripcion.getUsuario();
+
+        return new InscritoEventoResponse(
+                usuario.getIdUsuario(),
+                usuario.getNombre(),
+                usuario.getCorreo(),
+                usuario.getFotoPerfilUrl(),
+                usuario.getAcercaDe(),
+                inscripcion.getFechaInscripcion()
+        );
     }
 }

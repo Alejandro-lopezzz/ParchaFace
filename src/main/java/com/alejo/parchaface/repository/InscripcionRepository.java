@@ -37,6 +37,11 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Intege
           EstadoInscripcion estadoInscripcion
   );
 
+  List<Inscripcion> findByEvento_IdEventoAndEstadoInscripcionOrderByFechaInscripcionDesc(
+          Integer idEvento,
+          EstadoInscripcion estadoInscripcion
+  );
+
   void deleteByUsuario_IdUsuario(Integer usuarioId);
   void deleteByEvento_IdEvento(Integer eventoId);
 }

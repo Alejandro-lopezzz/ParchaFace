@@ -185,4 +185,17 @@ public class UsuarioController {
     List<UsuarioBusquedaDto> resultados = usuarioService.buscarUsuarios(q, principal.getName());
     return ResponseEntity.ok(resultados);
   }
+
+  @DeleteMapping("/mi-cuenta")
+  public ResponseEntity<?> eliminarMiCuenta(Principal principal) {
+    if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
+    }
+
+    usuarioService.eliminarMiCuenta(principal.getName());
+
+    return ResponseEntity.ok(Map.of(
+            "message", "Cuenta eliminada correctamente"
+    ));
+  }
 }
