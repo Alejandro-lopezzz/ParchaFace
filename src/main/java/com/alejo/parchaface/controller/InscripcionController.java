@@ -1,10 +1,14 @@
 package com.alejo.parchaface.controller;
 
+import com.alejo.parchaface.dto.InscritoEventoResponse;
 import com.alejo.parchaface.model.Inscripcion;
 import com.alejo.parchaface.service.InscripcionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
+import org.springframework.http.ResponseEntity;
 
+import java.util.Map;
 import java.util.List;
 
 @RestController
@@ -31,8 +35,7 @@ public class InscripcionController {
 
     @PutMapping("/{id}")
     public Inscripcion updateInscripcion(@PathVariable Integer id, @RequestBody Inscripcion inscripcion) {
-        // Seteamos el id del path en el objeto antes de actualizar
-        inscripcion.setId_inscripcion(id);
+        inscripcion.setIdInscripcion(id);
         return inscripcionService.updateInscripcion(inscripcion);
     }
 
@@ -40,4 +43,42 @@ public class InscripcionController {
     public void deleteInscripcion(@PathVariable Integer id) {
         inscripcionService.deleteInscripcion(id);
     }
+
+    @PostMapping("/eventos/{idEvento}/inscribirme")
+    public ResponseEntity<?> inscribirme(@PathVariable Integer idEvento, Principal principal) {
+
+        String correo = principal.getName();
+        Inscripcion ins = inscripcionService.inscribirseAEvento(idEvento, correo);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Inscripción exitosa",
+                "idInscripcion", ins.getIdInscripcion(),
+                "idEvento", idEvento,
+                "estado", ins.getEstadoInscripcion().name(),
+                "fechaInscripcion", ins.getFechaInscripcion().toString()
+        ));
+    }
+
+    @DeleteMapping("/eventos/{idEvento}/cancelar")
+    public ResponseEntity<?> cancelarInscripcion(@PathVariable Integer idEvento, Principal principal) {
+        String correo = principal.getName();
+
+        inscripcionService.cancelarInscripcion(idEvento, correo);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Inscripción cancelada",
+                "idEvento", idEvento
+        ));
+    }
+
+    @GetMapping("/eventos/{idEvento}/inscritos")
+    public ResponseEntity<List<InscritoEventoResponse>> obtenerInscritosDelEvento(
+            @PathVariable Integer idEvento,
+            Principal principal
+    ) {
+        String correo = principal.getName();
+        List<InscritoEventoResponse> inscritos = inscripcionService.obtenerInscritosDeEvento(idEvento, correo);
+        return ResponseEntity.ok(inscritos);
+    }
+
 }

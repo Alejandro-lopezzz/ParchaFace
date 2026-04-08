@@ -10,7 +10,7 @@ public class Inscripcion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id_inscripcion;
+    private Integer idInscripcion; // camelCase
 
     @ManyToOne
     @JoinColumn(name = "id_usuario", nullable = false)
@@ -21,15 +21,15 @@ public class Inscripcion {
     private Evento evento;
 
     @Column(nullable = false)
-    private LocalDate fecha_inscripcion = LocalDate.now();
+    private LocalDate fechaInscripcion = LocalDate.now();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoInscripcion estado_inscripcion = EstadoInscripcion.vigente;
+    private EstadoInscripcion estadoInscripcion = EstadoInscripcion.vigente;
 
     // Getters y setters
-    public Integer getId_inscripcion() { return id_inscripcion; }
-    public void setId_inscripcion(Integer id_inscripcion) { this.id_inscripcion = id_inscripcion; }
+    public Integer getIdInscripcion() { return idInscripcion; }
+    public void setIdInscripcion(Integer idInscripcion) { this.idInscripcion = idInscripcion; }
 
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
@@ -37,9 +37,9 @@ public class Inscripcion {
     public Evento getEvento() { return evento; }
     public void setEvento(Evento evento) { this.evento = evento; }
 
-    public LocalDate getFecha_inscripcion() { return fecha_inscripcion; }
-    public void setFecha_inscripcion(LocalDate fecha_inscripcion) { this.fecha_inscripcion = fecha_inscripcion; }
+    public LocalDate getFechaInscripcion() { return fechaInscripcion; }
+    public void setFechaInscripcion(LocalDate fechaInscripcion) { this.fechaInscripcion = fechaInscripcion; }
 
-    public EstadoInscripcion getEstado_inscripcion() { return estado_inscripcion; }
-    public void setEstado_inscripcion(EstadoInscripcion estado_inscripcion) { this.estado_inscripcion = estado_inscripcion; }
+    public EstadoInscripcion getEstadoInscripcion() { return estadoInscripcion; }
+    public void setEstadoInscripcion(EstadoInscripcion estadoInscripcion) { this.estadoInscripcion = estadoInscripcion; }
 }
