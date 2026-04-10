@@ -99,7 +99,9 @@ public class SecurityConfig {
 
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:4200",
-                "http://127.0.0.1:4200"
+                "http://127.0.0.1:4200",
+                "https://*.vercel.app",
+                "https://parcha-face-alpha.vercel.app/"
         ));
 
         config.setAllowedMethods(Arrays.asList(
